@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { VehicleModel, ColorVariant } from "@/types/inventory";
 import { InventoryService } from "@/services/inventory.service";
 import { X, Plus, Bike, Check, Sparkles } from "lucide-react";
@@ -17,8 +18,25 @@ export const ModelMasterModal: React.FC<ModelMasterModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const [mounted, setMounted] = useState(false);
   const [models, setModels] = useState<VehicleModel[]>(InventoryService.getModels());
   const [isAdding, setIsAdding] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   // New model state
   const [modelName, setModelName] = useState("");
@@ -32,7 +50,7 @@ export const ModelMasterModal: React.FC<ModelMasterModalProps> = ({
     { colorId: "CLR-NEW-1", colorName: "Racing Blue", colorCode: "#2563EB" },
   ]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const handleAddColor = () => {
     if (!colorName.trim()) return;
@@ -77,9 +95,15 @@ export const ModelMasterModal: React.FC<ModelMasterModalProps> = ({
     onSuccess();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-slate-950/75 backdrop-blur-xs overflow-y-auto"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp my-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/60">
           <div className="flex items-center gap-3">
@@ -323,7 +347,8 @@ export const ModelMasterModal: React.FC<ModelMasterModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

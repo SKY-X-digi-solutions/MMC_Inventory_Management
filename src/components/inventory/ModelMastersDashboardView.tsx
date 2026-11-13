@@ -1,9 +1,42 @@
 "use client";
 
-import React, { useState } from "react";
-import { VehicleModel, ColorVariant } from "@/types/inventory";
+import React, { useState, useEffect, useMemo } from "react";
+import { VehicleModel, ColorVariant, VehicleRecord } from "@/types/inventory";
 import { InventoryService } from "@/services/inventory.service";
-import { Plus, X, Bike, LayoutGrid, List, ChevronDown, Eye } from "lucide-react";
+import {
+  ArrowLeft,
+  Plus,
+  X,
+  Bike,
+  LayoutGrid,
+  List,
+  ChevronDown,
+  Eye,
+  IndianRupee,
+  Warehouse,
+  Layers,
+  Gauge,
+  ShieldCheck,
+  Printer,
+  Wrench,
+  Battery,
+  Key,
+  Cpu,
+  Zap,
+  CheckCircle2,
+  Clock,
+  FileText,
+  Tag,
+  Search,
+  Filter,
+  Package,
+  Boxes,
+  Truck,
+  Disc,
+  Check,
+  Calendar,
+  Sliders,
+} from "lucide-react";
 import toast from "react-hot-toast";
 
 interface ModelMastersDashboardViewProps {
@@ -14,9 +47,82 @@ export const ModelMastersDashboardView: React.FC<ModelMastersDashboardViewProps>
   onRefresh,
 }) => {
   const [models, setModels] = useState<VehicleModel[]>(InventoryService.getModels());
+  const [vehicles, setVehicles] = useState<VehicleRecord[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [selectedModelForDetails, setSelectedModelForDetails] = useState<VehicleModel | null>(null);
+
+  // Detail view state
+  const [activeDetailTab, setActiveDetailTab] = useState<
+    "units" | "specs" | "colors" | "service" | "ledger"
+  >("units");
+  const [unitStatusFilter, setUnitStatusFilter] = useState<string>("ALL");
+  const [unitSearch, setUnitSearch] = useState<string>("");
+
+  useEffect(() => {
+    setVehicles(InventoryService.getVehicles());
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectedModelForDetails(null);
+      }
+    };
+    if (selectedModelForDetails) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedModelForDetails]);
+
+  // Compute live stock statistics for currently selected model
+  const modelVehicles = useMemo(() => {
+    if (!selectedModelForDetails) return [];
+    return vehicles.filter(
+      (v) =>
+        v.modelId === selectedModelForDetails.modelId ||
+        v.modelCode.toUpperCase() === selectedModelForDetails.modelCode.toUpperCase() ||
+        v.modelName.toLowerCase() === selectedModelForDetails.modelName.toLowerCase()
+    );
+  }, [selectedModelForDetails, vehicles]);
+
+  const stockStats = useMemo(() => {
+    const total = modelVehicles.length;
+    const available = modelVehicles.filter((v) => v.status === "AVAILABLE").length;
+    const inTransit = modelVehicles.filter(
+      (v) => v.status === "IN_TRANSIT" || v.status === "TRANSFER_PENDING"
+    ).length;
+    const reserved = modelVehicles.filter((v) => v.status === "RESERVED").length;
+    const sold = modelVehicles.filter(
+      (v) => v.status === "SOLD" || v.status === "DELIVERED"
+    ).length;
+
+    const branchesMap: Record<string, number> = {};
+    modelVehicles.forEach((v) => {
+      const bName = v.branchName || "Main Yard";
+      branchesMap[bName] = (branchesMap[bName] || 0) + 1;
+    });
+
+    return { total, available, inTransit, reserved, sold, branchesMap };
+  }, [modelVehicles]);
+
+  // Filtered physical units for Tab 1
+  const filteredUnits = useMemo(() => {
+    return modelVehicles.filter((v) => {
+      const matchesStatus = unitStatusFilter === "ALL" || v.status === unitStatusFilter;
+      const q = unitSearch.trim().toLowerCase();
+      const matchesSearch =
+        !q ||
+        v.chassisNumber.toLowerCase().includes(q) ||
+        v.engineNumber.toLowerCase().includes(q) ||
+        (v.keyNumber && v.keyNumber.toLowerCase().includes(q)) ||
+        (v.colorName && v.colorName.toLowerCase().includes(q)) ||
+        (v.binCode && v.binCode.toLowerCase().includes(q)) ||
+        (v.batteryNumber && v.batteryNumber.toLowerCase().includes(q)) ||
+        (v.customerName && v.customerName.toLowerCase().includes(q));
+      return matchesStatus && matchesSearch;
+    });
+  }, [modelVehicles, unitStatusFilter, unitSearch]);
 
   // New model state
   const [modelName, setModelName] = useState("");
@@ -63,6 +169,7 @@ export const ModelMastersDashboardView: React.FC<ModelMastersDashboardViewProps>
       serviceSchedule: [
         { serviceNumber: 1, afterDays: 30, afterKm: 1000 },
         { serviceNumber: 2, afterDays: 90, afterKm: 4000 },
+        { serviceNumber: 3, afterDays: 180, afterKm: 7000 },
       ],
     };
 
@@ -73,6 +180,899 @@ export const ModelMastersDashboardView: React.FC<ModelMastersDashboardViewProps>
     onRefresh?.();
   };
 
+  // ==================== DEDICATED FULL-PAGE VEHICLE DETAILS VIEW ====================
+  if (selectedModelForDetails) {
+    const purchase = selectedModelForDetails.purchaseRate || 0;
+    const sales = selectedModelForDetails.salesRate || 0;
+    const margin = sales - purchase;
+    const marginPercent = purchase > 0 ? ((margin / purchase) * 100).toFixed(1) : "0.0";
+
+    return (
+      <div className="space-y-3 animate-fadeIn pb-6">
+        {/* ROW 1: Master Header & Navigation Bar */}
+        <div className="bg-white px-4 py-3 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => setSelectedModelForDetails(null)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 font-bold text-xs rounded-xl transition-colors shrink-0 shadow-2xs"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back</span>
+            </button>
+
+            <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+              <Bike className="w-5 h-5" />
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight truncate">
+                  {selectedModelForDetails.modelName}
+                </h1>
+                <span className="bg-blue-600 text-white px-2 py-0.5 rounded font-mono font-bold text-[11px] tracking-wide">
+                  {selectedModelForDetails.modelCode}
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded uppercase">
+                  {selectedModelForDetails.vehicleType}
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded uppercase hidden sm:inline">
+                  Active Master Catalog
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-500 font-medium mt-0.5 flex flex-wrap items-center gap-2">
+                <span>Official ID: <strong className="text-slate-700 font-mono">{selectedModelForDetails.modelId}</strong></span>
+                <span>•</span>
+                <span>HSN: <strong className="text-slate-700 font-mono">{selectedModelForDetails.hsnCode}</strong></span>
+                <span>•</span>
+                <span>Tax Class: <strong className="text-slate-700">{selectedModelForDetails.taxClassId || "GST001"} (28% GST)</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0 ml-auto">
+            <div className="hidden lg:flex items-center gap-3 pr-3 border-r border-slate-200 text-xs">
+              <div>
+                <span className="text-slate-400 font-medium block text-[10px] uppercase">Showroom Baseline</span>
+                <span className="font-mono font-bold text-emerald-600 text-sm">₹{sales.toLocaleString("en-IN")}</span>
+              </div>
+              <div className="border-l border-slate-100 pl-3">
+                <span className="text-slate-400 font-medium block text-[10px] uppercase">Gross Margin</span>
+                <span className="font-mono font-bold text-blue-700 text-sm">₹{margin.toLocaleString("en-IN")}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors shadow-2xs"
+              title="Print Specification Sheet"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Print Spec Sheet</span>
+            </button>
+            <button
+              onClick={() => setSelectedModelForDetails(null)}
+              className="inline-flex items-center gap-1 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-colors shadow-xs"
+            >
+              <span>Back to List</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ROW 2: Commercial & Pricing Matrix (Row of 4 Cards) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+          <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              Purchase Rate (Ex-Factory)
+            </span>
+            <div className="text-lg font-mono font-black text-slate-900 mt-0.5">
+              ₹{purchase.toLocaleString("en-IN")}
+            </div>
+            <span className="text-[10px] text-slate-500 block mt-0.5">
+              India Yamaha factory invoice baseline
+            </span>
+          </div>
+
+          <div className="bg-emerald-50/70 p-3.5 rounded-2xl border border-emerald-200 shadow-2xs">
+            <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
+              Standard Sales Rate (Ex-Showroom)
+            </span>
+            <div className="text-lg font-mono font-black text-emerald-600 mt-0.5">
+              ₹{sales.toLocaleString("en-IN")}
+            </div>
+            <span className="text-[10px] text-emerald-700 font-medium block mt-0.5">
+              Dealership customer billing price
+            </span>
+          </div>
+
+          <div className="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-200 shadow-2xs">
+            <span className="text-[10px] font-bold text-blue-800 uppercase tracking-wider block">
+              Dealership Gross Margin / Spread
+            </span>
+            <div className="text-lg font-mono font-black text-blue-700 mt-0.5">
+              ₹{margin.toLocaleString("en-IN")}
+            </div>
+            <span className="text-[10px] text-blue-700 font-bold block mt-0.5">
+              +{marginPercent}% dealer unit markup
+            </span>
+          </div>
+
+          <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              Live Dealership Stock
+            </span>
+            <div className="text-lg font-mono font-black text-slate-900 mt-0.5 flex items-baseline gap-2">
+              <span>{stockStats.total} Units</span>
+              <span className="text-xs font-semibold text-emerald-600">({stockStats.available} Yard)</span>
+            </div>
+            <span className="text-[10px] text-slate-500 block mt-0.5">
+              {stockStats.inTransit} Transit • {stockStats.sold + stockStats.reserved} Sold/Reserved
+            </span>
+          </div>
+        </div>
+
+        {/* ROW 3: Factory Technical Specs & Equipment Strip (Section 3.11 & 4 Summary) */}
+        <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-2.5 text-xs">
+          <div className="flex items-center gap-2 text-slate-500 font-bold text-[11px] uppercase tracking-wider shrink-0">
+            <Sliders className="w-3.5 h-3.5 text-blue-600" />
+            <span>Factory Equipment:</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-[11px]">
+            <span className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-semibold flex items-center gap-1.5">
+              <Disc className="w-3.5 h-3.5 text-slate-500" />
+              <span>Wheel: <strong>Alloy Wheels (Tubeless)</strong></span>
+            </span>
+
+            <span className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-semibold flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Brake: <strong>Front Disc (UBS)</strong></span>
+            </span>
+
+            <span className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-semibold flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-amber-500" />
+              <span>AutoStart: <strong>SMG Smart Motor Generator</strong></span>
+            </span>
+
+            <span className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-semibold flex items-center gap-1.5">
+              <Battery className="w-3.5 h-3.5 text-blue-600" />
+              <span>Battery: <strong>Exide 12V 5.0Ah MF</strong></span>
+            </span>
+
+            <span className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-semibold flex items-center gap-1.5">
+              <Key className="w-3.5 h-3.5 text-purple-600" />
+              <span>Keys: <strong>Dual Shutter Keys (KY-901)</strong></span>
+            </span>
+
+            <span className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-semibold flex items-center gap-1.5">
+              <Warehouse className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Yard Bay: <strong>YARD-A1 (PDI Bay)</strong></span>
+            </span>
+          </div>
+        </div>
+
+        {/* ROW 4: Interactive Tabs Switcher Bar */}
+        <div className="bg-white p-1.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-wrap items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setActiveDetailTab("units")}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeDetailTab === "units"
+                ? "bg-blue-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+            }`}
+          >
+            <Package className="w-3.5 h-3.5" />
+            <span>Physical Units in Stock</span>
+            <span
+              className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-md ${
+                activeDetailTab === "units" ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-700"
+              }`}
+            >
+              {modelVehicles.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveDetailTab("specs")}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeDetailTab === "specs"
+                ? "bg-blue-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+            }`}
+          >
+            <Cpu className="w-3.5 h-3.5" />
+            <span>Technical & Equipment Specs</span>
+            <span
+              className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-md ${
+                activeDetailTab === "specs" ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-700"
+              }`}
+            >
+              10 Specs
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveDetailTab("colors")}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeDetailTab === "colors"
+                ? "bg-blue-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Available Color Variants</span>
+            <span
+              className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-md ${
+                activeDetailTab === "colors" ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-700"
+              }`}
+            >
+              {selectedModelForDetails.colors.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveDetailTab("service")}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeDetailTab === "service"
+                ? "bg-blue-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+            }`}
+          >
+            <Gauge className="w-3.5 h-3.5" />
+            <span>Free Service Schedule</span>
+            <span
+              className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-md ${
+                activeDetailTab === "service" ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-700"
+              }`}
+            >
+              {selectedModelForDetails.serviceSchedule?.length || 3}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveDetailTab("ledger")}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeDetailTab === "ledger"
+                ? "bg-blue-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Supply Chain & Purchase Ledger</span>
+          </button>
+        </div>
+
+        {/* ==================== TAB 1: PHYSICAL VEHICLE UNITS TABLE ==================== */}
+        {activeDetailTab === "units" && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden space-y-3 p-4">
+            {/* Filter & Search Bar */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  { label: "All Units", value: "ALL", count: stockStats.total },
+                  { label: "Available in Yard", value: "AVAILABLE", count: stockStats.available },
+                  { label: "Transit", value: "IN_TRANSIT", count: stockStats.inTransit },
+                  { label: "Sold / Invoiced", value: "SOLD", count: stockStats.sold },
+                  { label: "Reserved", value: "RESERVED", count: stockStats.reserved },
+                ].map((pill) => (
+                  <button
+                    key={pill.value}
+                    type="button"
+                    onClick={() => setUnitStatusFilter(pill.value)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      unitStatusFilter === pill.value
+                        ? "bg-blue-50 text-blue-700 border border-blue-200/80 shadow-2xs"
+                        : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
+                    }`}
+                  >
+                    <span>{pill.label}</span>
+                    <span className="font-mono text-[10px] px-1.5 py-0.2 bg-white rounded-md border border-slate-200">
+                      {pill.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Search Box */}
+              <div className="relative min-w-[220px]">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={unitSearch}
+                  onChange={(e) => setUnitSearch(e.target.value)}
+                  placeholder="Search Chassis, Engine, Key, Bin..."
+                  className="w-full text-xs pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all font-medium text-slate-700"
+                />
+                {unitSearch && (
+                  <button
+                    onClick={() => setUnitSearch("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Units Data Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-center text-xs">
+                <thead className="bg-slate-50/90 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                  <tr>
+                    <th className="py-3 px-3 text-center">Chassis (VIN / Frame)</th>
+                    <th className="py-3 px-3 text-center">Engine Serial</th>
+                    <th className="py-3 px-3 text-center">Color Shade</th>
+                    <th className="py-3 px-3 text-center">Key & Battery</th>
+                    <th className="py-3 px-3 text-center">Wheel & Brake</th>
+                    <th className="py-3 px-3 text-center">Storage Bay / Bin</th>
+                    <th className="py-3 px-3 text-center">Inward Voucher</th>
+                    <th className="py-3 px-3 text-center">Vehicle Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredUnits.length > 0 ? (
+                    filteredUnits.map((u) => {
+                      const isAvail = u.status === "AVAILABLE";
+                      const isSold = u.status === "SOLD" || u.status === "DELIVERED";
+                      const isTransit = u.status === "IN_TRANSIT" || u.status === "TRANSFER_PENDING";
+                      const isReserved = u.status === "RESERVED";
+
+                      return (
+                        <tr key={u.vehicleId} className="hover:bg-blue-50/30 transition-colors">
+                          {/* Chassis Number */}
+                          <td className="py-3 px-3 whitespace-nowrap text-center font-mono">
+                            <div className="font-bold text-slate-900 text-xs">{u.chassisNumber}</div>
+                            <div className="flex items-center justify-center gap-1 text-[9px] text-emerald-700 mt-0.5">
+                              <Check className="w-2.5 h-2.5" />
+                              <span>Normalized VIN</span>
+                            </div>
+                          </td>
+
+                          {/* Engine Number */}
+                          <td className="py-3 px-3 whitespace-nowrap text-center font-mono font-semibold text-slate-700">
+                            {u.engineNumber}
+                          </td>
+
+                          {/* Color */}
+                          <td className="py-3 px-3 whitespace-nowrap text-center">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 rounded-lg border border-slate-200">
+                              <span
+                                className="w-3 h-3 rounded-full border border-black/10 shrink-0"
+                                style={{ backgroundColor: u.colorCode || "#2563EB" }}
+                              />
+                              <span className="font-bold text-slate-800 text-[11px]">{u.colorName}</span>
+                            </div>
+                          </td>
+
+                          {/* Key & Battery */}
+                          <td className="py-3 px-3 whitespace-nowrap text-center">
+                            <div className="font-mono font-semibold text-slate-800 text-[11px]">
+                              Key: {u.keyNumber || "KY-901"}
+                            </div>
+                            <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                              {u.batteryNumber || "BAT-EX-101"} ({u.batteryMake || "Exide"})
+                            </div>
+                          </td>
+
+                          {/* Wheel & Brake */}
+                          <td className="py-3 px-3 whitespace-nowrap text-center">
+                            <div className="font-bold text-slate-800 text-[11px]">
+                              {u.wheelType || "ALLOY"} • {u.disk ? "Front Disc" : "Drum"}
+                            </div>
+                            <div className="text-[10px] text-emerald-700 font-semibold mt-0.5">
+                              {u.autoStart ? "SMG AutoStart" : "Electric Start"}
+                            </div>
+                          </td>
+
+                          {/* Storage Bay */}
+                          <td className="py-3 px-3 whitespace-nowrap text-center">
+                            <span className="inline-block px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 font-mono font-bold rounded-md text-[11px]">
+                              {u.binCode || "YARD-A1"}
+                            </span>
+                            <div className="text-[10px] text-slate-500 mt-0.5 truncate max-w-[140px] mx-auto">
+                              {u.locationName || "Yard A (PDI)"}
+                            </div>
+                          </td>
+
+                          {/* Purchase Voucher */}
+                          <td className="py-3 px-3 whitespace-nowrap text-center font-mono">
+                            <div className="text-slate-800 font-semibold text-[11px]">{u.purchaseId || "PUR-101"}</div>
+                            <div className="text-[10px] text-slate-400">
+                              {u.supplierInvoiceNo || "INV-YAM-2026-9921"}
+                            </div>
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-3 px-3 whitespace-nowrap text-center">
+                            {isAvail && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg font-bold text-[11px]">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                <span>AVAILABLE</span>
+                              </span>
+                            )}
+                            {isSold && (
+                              <div>
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg font-bold text-[11px]">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                  <span>SOLD</span>
+                                </span>
+                                {u.customerName && (
+                                  <div className="text-[10px] text-slate-500 mt-0.5">
+                                    {u.customerName} ({u.salesInvoiceId || "SAL-501"})
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {isTransit && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg font-bold text-[11px]">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                <span>IN-TRANSIT</span>
+                              </span>
+                            )}
+                            {isReserved && (
+                              <div>
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg font-bold text-[11px]">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                                  <span>RESERVED</span>
+                                </span>
+                                {u.customerName && (
+                                  <div className="text-[10px] text-purple-600 mt-0.5">{u.customerName}</div>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-slate-400 font-medium">
+                        <Boxes className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                        <div>No physical units match the selected status / search filter.</div>
+                        <div className="text-xs text-slate-400 mt-1">
+                          Try selecting &apos;All Units&apos; or clearing your search.
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between text-[11px] text-slate-500 px-1">
+              <span>
+                Showing {filteredUnits.length} of {modelVehicles.length} physical units registered under{" "}
+                <strong>{selectedModelForDetails.modelName}</strong>
+              </span>
+              <span className="font-mono text-slate-400">
+                Primary Dealership: Tirupattur Main Showroom (HQ)
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* ==================== TAB 2: TECHNICAL & EQUIPMENT SPECS ==================== */}
+        {activeDetailTab === "specs" && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {/* Spec 1: 17-Digit Chassis & VIN */}
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                <div className="flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                  <ShieldCheck className="w-4 h-4 text-blue-600" />
+                  <span>1. 17-Digit Chassis (VIN / Frame)</span>
+                </div>
+                <div className="text-sm font-bold text-slate-900">
+                  ISO 3779 Normalized Standard
+                </div>
+                <div className="text-xs text-slate-600 leading-relaxed">
+                  Strictly 17 alphanumeric uppercase characters. Guarded against duplicates via Firestore collection{" "}
+                  <code className="text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded font-mono text-[11px]">
+                    vehicleIdentifiers/{`{normalizedIdentifier}`}
+                  </code>.
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400 font-mono">Sample VIN:</span>
+                  <span className="font-mono font-bold text-slate-800">ME1RG431000101</span>
+                </div>
+              </div>
+
+              {/* Spec 2: Engine Identification */}
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                <div className="flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                  <Cpu className="w-4 h-4 text-emerald-600" />
+                  <span>2. Engine Number Registry</span>
+                </div>
+                <div className="text-sm font-bold text-slate-900">
+                  Yamaha Blue Core Fi Engine
+                </div>
+                <div className="text-xs text-slate-600 leading-relaxed">
+                  Air-cooled, 4-stroke, SOHC, 2-valve single cylinder engine with Fuel Injection (Fi) and smart sensor array. Normalized in system registry.
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400 font-mono">Sample Engine:</span>
+                  <span className="font-mono font-bold text-slate-800">EN1RG431000101</span>
+                </div>
+              </div>
+
+              {/* Spec 3: Wheel & Rim Type */}
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                <div className="flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                  <Disc className="w-4 h-4 text-amber-600" />
+                  <span>3. Wheel & Rim Configuration</span>
+                </div>
+                <div className="text-sm font-bold text-slate-900">
+                  Cast Alloy Wheels (Tubeless)
+                </div>
+                <div className="text-xs text-slate-600 leading-relaxed">
+                  High-rigidity lightweight die-cast alloy wheels with tubeless commuter tyres (Front: 90/90-12, Rear: 110/90-10) for maximum stability.
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400 font-mono">wheelType Field:</span>
+                  <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">ALLOY</span>
+                </div>
+              </div>
+
+              {/* Spec 4: Braking System (Disc/Drum) */}
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                <div className="flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                  <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                  <span>4. Braking System (Disc / Drum)</span>
+                </div>
+                <div className="text-sm font-bold text-slate-900">
+                  Front Disc with Unified Braking (UBS)
+                </div>
+                <div className="text-xs text-slate-600 leading-relaxed">
+                  Front 190mm hydraulic disc brake with rear mechanical drum brake. Equipped with Yamaha Unified Braking System (UBS) for synchronized stopping.
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400 font-mono">disk Field:</span>
+                  <span className="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">Front Disc (UBS)</span>
+                </div>
+              </div>
+
+              {/* Spec 5: AutoStart (Smart Motor Generator) */}
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                <div className="flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                  <Zap className="w-4 h-4 text-amber-500" />
+                  <span>5. AutoStart / SMG System</span>
+                </div>
+                <div className="text-sm font-bold text-slate-900">
+                  Smart Motor Generator (SMG)
+                </div>
+                <div className="text-xs text-slate-600 leading-relaxed">
+                  One-touch silent start system where the generator acts as an electric starter motor. Eliminates gear engagement noise and powers Auto Stop & Start (SSS).
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400 font-mono">autoStart Field:</span>
+                  <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">true (Enabled)</span>
+                </div>
+              </div>
+
+              {/* Spec 6: Starter Battery (Primary) */}
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                <div className="flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                  <Battery className="w-4 h-4 text-blue-600" />
+                  <span>6. Primary Starter Battery</span>
+                </div>
+                <div className="text-sm font-bold text-slate-900">
+                  Exide / Amaron 12V 5.0Ah MF
+                </div>
+                <div className="text-xs text-slate-600 leading-relaxed">
+                  Maintenance-Free VRLA battery individually registered by serial number upon factory inward inspection with 18 months dealer warranty tracking.
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400 font-mono">batteryNumber / Make:</span>
+                  <span className="font-mono font-bold text-slate-800">BAT-EX-101 (Exide)</span>
+                </div>
+              </div>
+
+              {/* Spec 7: Secondary / Aux Battery */}
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                <div className="flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                  <Battery className="w-4 h-4 text-purple-600" />
+                  <span>7. Secondary / Aux Battery Support</span>
+                </div>
+                <div className="text-sm font-bold text-slate-900">
+                  Auxiliary Hybrid Assist Unit
+                </div>
+                <div className="text-xs text-slate-600 leading-relaxed">
+                  Secondary battery serial tracking for hybrid power assist / electric assist circuits and instrument cluster telemetry support.
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400 font-mono">batteryNumber2:</span>
+                  <span className="font-mono font-bold text-slate-800">BAT-AUX-001</span>
+                </div>
+              </div>
+
+              {/* Spec 8: ECU Controller */}
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                <div className="flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                  <Cpu className="w-4 h-4 text-slate-700" />
+                  <span>8. ECU Controller Module</span>
+                </div>
+                <div className="text-sm font-bold text-slate-900">
+                  Electronic Control Unit (MCU)
+                </div>
+                <div className="text-xs text-slate-600 leading-relaxed">
+                  Yamaha EFI microprocessor controlling fuel map injection timing, ignition advance, and SMG hybrid electric assist torque curves.
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400 font-mono">controllerNumber:</span>
+                  <span className="font-mono font-bold text-slate-800">CTRL-YAM-8821</span>
+                </div>
+              </div>
+
+              {/* Spec 9: Battery Charger */}
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                <div className="flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                  <Zap className="w-4 h-4 text-emerald-600" />
+                  <span>9. Battery Charger Unit</span>
+                </div>
+                <div className="text-sm font-bold text-slate-900">
+                  Yamaha OEM Float Charger Module
+                </div>
+                <div className="text-xs text-slate-600 leading-relaxed">
+                  Factory authorized regulated float charger module provided for pre-delivery yard maintenance and showroom battery health upkeep.
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400 font-mono">chargerNumber:</span>
+                  <span className="font-mono font-bold text-slate-800">CHG-YAM-4412</span>
+                </div>
+              </div>
+
+              {/* Spec 10: Dual Key System */}
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                <div className="flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                  <Key className="w-4 h-4 text-blue-600" />
+                  <span>10. Dual Master Key Set</span>
+                </div>
+                <div className="text-sm font-bold text-slate-900">
+                  Anti-Theft Shutter Key
+                </div>
+                <div className="text-xs text-slate-600 leading-relaxed">
+                  Dual matched master keys with magnetic anti-theft shutter lock mechanism. Operates ignition, under-seat storage, and fuel cap.
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400 font-mono">keyNumber:</span>
+                  <span className="font-mono font-bold text-slate-800">KY-901 (Pair)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================== TAB 3: COLOR VARIANTS CATALOG ==================== */}
+        {activeDetailTab === "colors" && (
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  Available Color Variants ({selectedModelForDetails.colors.length} Factory Shades)
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Official Yamaha color codes, swatch hex codes, and live stock allocation in yard.
+                </p>
+              </div>
+              <span className="text-xs font-mono font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-xl border border-blue-200">
+                HSN: {selectedModelForDetails.hsnCode}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {selectedModelForDetails.colors.map((c) => {
+                const colorUnits = modelVehicles.filter(
+                  (v) => v.colorName.toLowerCase() === c.colorName.toLowerCase()
+                );
+                const yardCount = colorUnits.filter((v) => v.status === "AVAILABLE").length;
+                const soldCount = colorUnits.filter((v) => v.status === "SOLD").length;
+
+                return (
+                  <div
+                    key={c.colorId}
+                    className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:shadow-xs transition-all space-y-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="w-8 h-8 rounded-full border-2 border-white shadow-xs shrink-0"
+                        style={{ backgroundColor: c.colorCode }}
+                      />
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-900 text-xs truncate">{c.colorName}</div>
+                        <div className="font-mono text-[10px] text-slate-400 uppercase">{c.colorCode}</div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-center pt-2 border-t border-slate-200/80">
+                      <div className="bg-white p-2 rounded-xl border border-slate-200">
+                        <span className="text-[9px] font-bold uppercase text-slate-400 block">In Yard</span>
+                        <span className="text-sm font-mono font-black text-emerald-600">{yardCount}</span>
+                      </div>
+                      <div className="bg-white p-2 rounded-xl border border-slate-200">
+                        <span className="text-[9px] font-bold uppercase text-slate-400 block">Sold</span>
+                        <span className="text-sm font-mono font-black text-blue-600">{soldCount}</span>
+                      </div>
+                    </div>
+
+                    <div className="text-[10px] text-slate-500 font-mono text-center">
+                      Color ID: <strong>{c.colorId}</strong>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ==================== TAB 4: FREE SERVICE SCHEDULE ==================== */}
+        {activeDetailTab === "service" && (
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  Authorized Yamaha Free Service Schedule
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Dealer warranty maintenance intervals and periodic inspection guidelines.
+                </p>
+              </div>
+              <span className="text-xs font-bold px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl">
+                Official Warranty Policy
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+              {(selectedModelForDetails.serviceSchedule || [
+                { serviceNumber: 1, afterDays: 30, afterKm: 1000 },
+                { serviceNumber: 2, afterDays: 90, afterKm: 4000 },
+                { serviceNumber: 3, afterDays: 180, afterKm: 7000 },
+              ]).map((s, idx) => (
+                <div
+                  key={idx}
+                  className="p-4 rounded-2xl border border-blue-100 bg-blue-50/40 space-y-3 flex flex-col justify-between"
+                >
+                  <div className="flex items-center justify-between border-b border-blue-100 pb-2">
+                    <span className="font-black text-blue-900 text-sm">Service Coupon #{s.serviceNumber}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-600 text-white rounded-md">
+                      Free Labor
+                    </span>
+                  </div>
+
+                  <div className="space-y-1 text-xs">
+                    <div className="flex items-center justify-between text-slate-700">
+                      <span className="text-slate-500 font-medium">Time Interval:</span>
+                      <strong className="font-mono text-slate-900">{s.afterDays} Days from Sale</strong>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-700">
+                      <span className="text-slate-500 font-medium">Odometer Distance:</span>
+                      <strong className="font-mono text-emerald-700">{s.afterKm.toLocaleString("en-IN")} KM</strong>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-2.5 rounded-xl border border-blue-100 text-[11px] text-slate-600 leading-relaxed">
+                    {idx === 0 && "First safety inspection, engine oil & filter change, idle speed check & chain lube."}
+                    {idx === 1 && "Engine tuning, brake play inspection, valve clearance check, and electrical testing."}
+                    {idx >= 2 && "General service, spark plug cleaning, air cleaner element, and battery health diagnosis."}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ==================== TAB 5: SUPPLY CHAIN & PURCHASE LEDGER ==================== */}
+        {activeDetailTab === "ledger" && (
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  Supply Chain & Purchase Ledger Linkage
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Inward purchase voucher, factory supplier details, and audit trail.
+                </p>
+              </div>
+              <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200">
+                Voucher: PUR-101 (POSTED)
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">OEM Supplier</span>
+                <strong className="font-bold text-slate-900 block mt-0.5">India Yamaha Motor Pvt. Ltd.</strong>
+                <span className="text-[10px] font-mono text-slate-400">Supplier ID: SUP001</span>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">Supplier Factory Invoice</span>
+                <strong className="font-mono font-bold text-slate-900 block mt-0.5">INV-YAM-2026-9921</strong>
+                <span className="text-[10px] text-slate-400">Date: 15-Oct-2026</span>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">Statutory GST Class</span>
+                <strong className="font-mono font-bold text-slate-900 block mt-0.5">HSN 8711 (GST001)</strong>
+                <span className="text-[10px] text-slate-400">28% GST (14% CGST + 14% SGST)</span>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">Primary Receiving Yard</span>
+                <strong className="font-bold text-slate-900 block mt-0.5">Tirupattur Main Yard A</strong>
+                <span className="text-[10px] text-slate-400">Bay: YARD-A1 (LOC002)</span>
+              </div>
+            </div>
+
+            {/* Inward Movement History */}
+            <div className="pt-2">
+              <div className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Stock Movements History (Audit Trail)
+              </div>
+              <div className="rounded-xl border border-slate-200 overflow-hidden">
+                <table className="w-full text-center text-xs">
+                  <thead className="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase">
+                    <tr>
+                      <th className="py-2.5 px-3 text-center">Movement ID</th>
+                      <th className="py-2.5 px-3 text-center">Type</th>
+                      <th className="py-2.5 px-3 text-center">Reference Voucher</th>
+                      <th className="py-2.5 px-3 text-center">Quantity</th>
+                      <th className="py-2.5 px-3 text-center">Destination Yard</th>
+                      <th className="py-2.5 px-3 text-center">Audited By</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    <tr>
+                      <td className="py-2.5 px-3 font-mono font-bold text-slate-800 text-center">MOV-001</td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded text-[10px]">
+                          PURCHASE INWARD
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-slate-700 text-center">PUR-101</td>
+                      <td className="py-2.5 px-3 font-mono font-bold text-emerald-600 text-center">+4 Units</td>
+                      <td className="py-2.5 px-3 text-slate-600 text-center">Yard A (New Arrivals & PDI)</td>
+                      <td className="py-2.5 px-3 text-slate-500 text-center">Inventory Manager</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2.5 px-3 font-mono font-bold text-slate-800 text-center">MOV-003</td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span className="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold rounded text-[10px]">
+                          RETAIL SALE
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-slate-700 text-center">SAL-501</td>
+                      <td className="py-2.5 px-3 font-mono font-bold text-blue-600 text-center">-1 Unit</td>
+                      <td className="py-2.5 px-3 text-slate-600 text-center">Customer Handover (R. Anitha)</td>
+                      <td className="py-2.5 px-3 text-slate-500 text-center">Sales Executive</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Micro Footer */}
+        <div className="flex items-center justify-between px-2 pt-1 text-[11px] text-slate-400">
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Official MMC Yamaha Dealership Identity • Maruthi Motors Yamaha Tirupattur</span>
+          </div>
+          <button
+            onClick={() => setSelectedModelForDetails(null)}
+            className="text-blue-600 hover:text-blue-800 font-bold hover:underline"
+          >
+            ← Back to Models List
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ==================== MAIN MODEL MASTERS LIST / GRID DASHBOARD ====================
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Top Banner */}
@@ -95,10 +1095,11 @@ export const ModelMastersDashboardView: React.FC<ModelMastersDashboardViewProps>
             <button
               type="button"
               onClick={() => setViewMode("list")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${viewMode === "list"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                viewMode === "list"
                   ? "bg-white text-blue-600 shadow-xs font-bold"
                   : "text-slate-600 hover:text-slate-900"
-                }`}
+              }`}
             >
               <List className="w-3.5 h-3.5" />
               <span>List</span>
@@ -106,10 +1107,11 @@ export const ModelMastersDashboardView: React.FC<ModelMastersDashboardViewProps>
             <button
               type="button"
               onClick={() => setViewMode("grid")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${viewMode === "grid"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                viewMode === "grid"
                   ? "bg-white text-blue-600 shadow-xs font-bold"
                   : "text-slate-600 hover:text-slate-900"
-                }`}
+              }`}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
               <span>Grid</span>
@@ -118,10 +1120,11 @@ export const ModelMastersDashboardView: React.FC<ModelMastersDashboardViewProps>
 
           <button
             onClick={() => setIsAdding(!isAdding)}
-            className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl shadow-xs transition-colors shrink-0 ${isAdding
+            className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl shadow-xs transition-colors shrink-0 ${
+              isAdding
                 ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300"
                 : "bg-blue-600 hover:bg-blue-700 text-white"
-              }`}
+            }`}
           >
             {isAdding ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
             <span>{isAdding ? "Cancel" : "Add New Vehicle Model"}</span>
@@ -341,11 +1344,15 @@ export const ModelMastersDashboardView: React.FC<ModelMastersDashboardViewProps>
 
                   {/* View Details Eye Icon Button */}
                   <button
-                    onClick={() => setSelectedModelForDetails(m)}
-                    className="ml-2 p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 border border-slate-200 rounded-xl transition-colors shrink-0"
-                    title="View Full Vehicle Details"
+                    onClick={() => {
+                      setSelectedModelForDetails(m);
+                      setActiveDetailTab("units");
+                    }}
+                    className="ml-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 rounded-xl text-xs font-bold transition-all shadow-2xs shrink-0"
+                    title="View Vehicle Details"
                   >
                     <Eye className="w-4 h-4" />
+                    <span>View</span>
                   </button>
                 </div>
               </div>
@@ -356,48 +1363,55 @@ export const ModelMastersDashboardView: React.FC<ModelMastersDashboardViewProps>
         /* List View */
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-center text-xs">
               <thead className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <tr>
-                  <th className="py-3.5 px-5">Model Name</th>
-                  <th className="py-3.5 px-4">Model Code</th>
-                  <th className="py-3.5 px-4">Category</th>
-                  <th className="py-3.5 px-4">HSN Code</th>
-                  <th className="py-3.5 px-4">Purchase Rate</th>
-                  <th className="py-3.5 px-4">Standard Sales</th>
-                  <th className="py-3.5 px-4">Colors</th>
-                  <th className="py-3.5 px-5 text-right">Details</th>
+                  <th className="py-3 px-4 text-center">Model Name</th>
+                  <th className="py-3 px-3 text-center">Model Code</th>
+                  <th className="py-3 px-3 text-center">Category</th>
+                  <th className="py-3 px-3 text-center">HSN Code</th>
+                  <th className="py-3 px-3 text-center">Purchase Rate</th>
+                  <th className="py-3 px-3 text-center">Standard Sales</th>
+                  <th className="py-3 px-3 text-center">Colors</th>
+                  <th className="py-3 px-4 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {models.map((m) => (
-                  <tr key={m.modelId} className="hover:bg-blue-50/30 transition-colors">
-                    <td className="py-3.5 px-5 font-bold text-slate-900 whitespace-nowrap">
+                  <tr
+                    key={m.modelId}
+                    onClick={() => {
+                      setSelectedModelForDetails(m);
+                      setActiveDetailTab("units");
+                    }}
+                    className="hover:bg-blue-50/40 cursor-pointer transition-colors group"
+                  >
+                    <td className="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap text-center group-hover:text-blue-600 transition-colors">
                       {m.modelName}
                     </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <span className="bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-200/60 font-mono font-bold text-blue-700">
+                    <td className="py-3.5 px-3 whitespace-nowrap text-center">
+                      <span className="inline-block bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-200/60 font-mono font-bold text-blue-700 text-xs">
                         {m.modelCode}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <span className="text-[10px] font-bold px-2.5 py-1 bg-slate-100 text-slate-700 rounded-md">
+                    <td className="py-3.5 px-3 whitespace-nowrap text-center">
+                      <span className="inline-block text-[10px] font-bold px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-md">
                         {m.vehicleType}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-slate-500 whitespace-nowrap">
+                    <td className="py-3.5 px-3 font-mono text-slate-500 whitespace-nowrap text-center">
                       {m.hsnCode}
                     </td>
-                    <td className="py-3.5 px-4 font-mono font-bold text-slate-800 whitespace-nowrap">
+                    <td className="py-3.5 px-3 font-mono font-bold text-slate-800 whitespace-nowrap text-center">
                       ₹{m.purchaseRate?.toLocaleString("en-IN")}
                     </td>
-                    <td className="py-3.5 px-4 font-mono font-bold text-emerald-600 whitespace-nowrap">
+                    <td className="py-3.5 px-3 font-mono font-bold text-emerald-600 whitespace-nowrap text-center">
                       ₹{m.salesRate?.toLocaleString("en-IN")}
                     </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
+                    <td className="py-3.5 px-3 whitespace-nowrap text-center" onClick={(e) => e.stopPropagation()}>
                       {/* Compact Dropdown Menu for Colors */}
                       <details className="relative inline-block text-left group">
-                        <summary className="list-none cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 transition-colors shadow-2xs select-none">
+                        <summary className="list-none cursor-pointer inline-flex items-center gap-2 px-2.5 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 transition-colors shadow-2xs select-none">
                           <div className="flex -space-x-1 items-center">
                             {m.colors.slice(0, 3).map((c) => (
                               <span
@@ -411,7 +1425,7 @@ export const ModelMastersDashboardView: React.FC<ModelMastersDashboardViewProps>
                           <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-open:rotate-180 transition-transform duration-200" />
                         </summary>
 
-                        <div className="absolute left-0 mt-1.5 w-52 bg-white border border-slate-200 rounded-xl shadow-xl p-2 z-20 space-y-1 animate-fadeIn text-left">
+                        <div className="absolute left-1/2 -translate-x-1/2 mt-1.5 w-52 bg-white border border-slate-200 rounded-xl shadow-xl p-2 z-20 space-y-1 animate-fadeIn text-left">
                           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1 border-b border-slate-100">
                             Available Color Variants
                           </div>
@@ -432,13 +1446,17 @@ export const ModelMastersDashboardView: React.FC<ModelMastersDashboardViewProps>
                         </div>
                       </details>
                     </td>
-                    <td className="py-3.5 px-5 text-right whitespace-nowrap">
+                    <td className="py-3.5 px-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <button
-                        onClick={() => setSelectedModelForDetails(m)}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 border border-slate-200 rounded-lg transition-colors"
-                        title="View Full Vehicle Details"
+                        onClick={() => {
+                          setSelectedModelForDetails(m);
+                          setActiveDetailTab("units");
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 rounded-lg text-xs font-bold transition-all shadow-2xs"
+                        title="View Vehicle Details"
                       >
-                        <Eye className="w-4 h-4" />
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>View</span>
                       </button>
                     </td>
                   </tr>
@@ -446,140 +1464,9 @@ export const ModelMastersDashboardView: React.FC<ModelMastersDashboardViewProps>
               </tbody>
             </table>
           </div>
-          <div className="p-4 border-t border-slate-200 bg-slate-50/60 text-xs text-slate-500 font-medium px-5">
-            Showing {models.length} Yamaha vehicle models in Master Catalog
-          </div>
-        </div>
-      )}
-
-      {/* Full Vehicle Model Detail Modal - Ultra-Compact Fit */}
-      {selectedModelForDetails && (
-        <div className="fixed inset-0 z-9999 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-          {/* Backdrop click to close */}
-          <div
-            className="fixed inset-0 -z-10"
-            onClick={() => setSelectedModelForDetails(null)}
-          />
-
-          <div className="bg-white w-full max-w-3xl flex flex-col rounded-2xl border border-slate-200/90 shadow-2xl overflow-hidden my-auto animate-scaleUp">
-            {/* Modal Header */}
-            <div className="px-4 py-2.5 bg-slate-950 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-600/30 text-blue-300 rounded border border-blue-500/30 uppercase tracking-wider">
-                  {selectedModelForDetails.vehicleType}
-                </span>
-                <h2 className="text-base font-black tracking-tight text-white">{selectedModelForDetails.modelName}</h2>
-                <span className="bg-blue-600 text-white px-1.5 py-0.5 rounded font-mono font-bold text-[11px]">
-                  {selectedModelForDetails.modelCode}
-                </span>
-                <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">• HSN: {selectedModelForDetails.hsnCode}</span>
-              </div>
-              <button
-                onClick={() => setSelectedModelForDetails(null)}
-                className="p-1 text-slate-400 hover:text-white bg-white/10 hover:bg-white/20 rounded-md transition-colors shrink-0"
-                title="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Modal Body - Balanced Compact Dimensions */}
-            <div className="p-3.5 space-y-2.5 text-xs text-slate-700">
-              {/* Row 1: Pricing & Key Meta Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Purchase Rate (Ex-Factory)
-                  </span>
-                  <div className="text-base font-mono font-black text-slate-900 mt-0.5">
-                    ₹{selectedModelForDetails.purchaseRate?.toLocaleString("en-IN")}
-                  </div>
-                </div>
-
-                <div className="bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-200">
-                  <span className="text-[9px] font-bold text-emerald-800 uppercase tracking-wider block">
-                    Standard Sales Price
-                  </span>
-                  <div className="text-base font-mono font-black text-emerald-600 mt-0.5">
-                    ₹{selectedModelForDetails.salesRate?.toLocaleString("en-IN")}
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex flex-col justify-center">
-                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">
-                    GST & Statutory Class
-                  </span>
-                  <span className="font-bold text-slate-800 text-[11px] mt-0.5 truncate">
-                    {selectedModelForDetails.taxClassId || "GST001"} (8711)
-                  </span>
-                </div>
-
-                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex flex-col justify-center">
-                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">
-                    Catalog Status
-                  </span>
-                  <div>
-                    <span className="inline-block px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded text-[9px] mt-0.5 border border-emerald-200">
-                      Active Catalog
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Row 2: Color Variants Full Breakdown */}
-              <div className="bg-slate-50/60 p-2.5 rounded-xl border border-slate-200/80">
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
-                  Available Color Variants ({selectedModelForDetails.colors.length}):
-                </span>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {selectedModelForDetails.colors.map((c) => (
-                    <div
-                      key={c.colorId}
-                      className="flex items-center gap-2 p-1.5 bg-white rounded-lg border border-slate-200/80 shadow-2xs"
-                    >
-                      <span
-                        className="w-3 h-3 rounded-full border border-black/10 shrink-0"
-                        style={{ backgroundColor: c.colorCode }}
-                      />
-                      <div className="min-w-0">
-                        <div className="font-bold text-slate-800 text-[10px] truncate">{c.colorName}</div>
-                        <div className="font-mono text-[8px] text-slate-400 leading-none">{c.colorCode}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Row 3: Dealership Free Service Schedule */}
-              {selectedModelForDetails.serviceSchedule && selectedModelForDetails.serviceSchedule.length > 0 && (
-                <div className="bg-slate-50/60 p-2.5 rounded-xl border border-slate-200/80">
-                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
-                    Dealership Free Service Schedule:
-                  </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {selectedModelForDetails.serviceSchedule.map((s, idx) => (
-                      <div key={idx} className="p-2 bg-white rounded-lg border border-blue-100 flex justify-between items-center shadow-2xs">
-                        <span className="font-bold text-blue-900 text-[11px]">Service #{s.serviceNumber}</span>
-                        <span className="text-slate-600 font-mono text-[10px] font-semibold">
-                          {s.afterDays}d / {s.afterKm}km
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
-              <span className="text-[10px] text-slate-400">Official MMC Yamaha Dealership Identity</span>
-              <button
-                onClick={() => setSelectedModelForDetails(null)}
-                className="px-3.5 py-1 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg shadow-xs transition-colors"
-              >
-                Close
-              </button>
-            </div>
+          <div className="p-4 border-t border-slate-200 bg-slate-50/60 text-xs text-slate-500 font-medium px-5 flex items-center justify-between">
+            <span>Showing {models.length} Yamaha vehicle models in Master Catalog</span>
+            <span className="text-[11px] text-slate-400">Click any row or &apos;View&apos; to view all vehicle details</span>
           </div>
         </div>
       )}
