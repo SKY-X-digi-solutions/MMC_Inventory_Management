@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { StockImportSession } from "@/types/inventory";
 import { ImportParserService } from "@/services/importParser.service";
 import { InventoryService } from "@/services/inventory.service";
@@ -9,6 +9,7 @@ import {
   DEFAULT_LOCATIONS,
   DEFAULT_STORAGE_BINS,
 } from "@/services/modelCatalog.service";
+import { CustomDropdown } from "@/components/ui/CustomDropdown";
 import {
   UploadCloud,
   FileSpreadsheet,
@@ -34,17 +35,60 @@ export const InwardDashboardView: React.FC<InwardDashboardViewProps> = ({
   const [branchId, setBranchId] = useState(
     selectedBranch !== "ALL" ? selectedBranch : DEFAULT_BRANCHES[0].branchId
   );
-  const [locationId, setLocationId] = useState(DEFAULT_LOCATIONS[1].locationId); // Yard A
+  const [locationId, setLocationId] = useState(DEFAULT_LOCATIONS[0].locationId); // Yard A
   const [binId, setBinId] = useState(DEFAULT_STORAGE_BINS[0].binId); // YARD-A1
-  const [isOpeningStock, setIsOpeningStock] = useState(false);
   const [invoiceNo, setInvoiceNo] = useState(`YMH-INV-${Date.now().toString().slice(-5)}`);
   const [session, setSession] = useState<StockImportSession | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const toggleOpeningStock = (val: boolean) => {
-    setIsOpeningStock(val);
-    setInvoiceNo(val ? "OPENING-STOCK-MMC" : `YMH-INV-${Date.now().toString().slice(-5)}`);
+  // Sync selected branch if changed from outside
+  useEffect(() => {
+    if (selectedBranch !== "ALL" && selectedBranch !== branchId) {
+      handleBranchChange(selectedBranch);
+    }
+  }, [selectedBranch]);
+
+  const handleBranchChange = (newBranchId: string) => {
+    setBranchId(newBranchId);
+    const branchLocs = DEFAULT_LOCATIONS.filter((l) => l.branchId === newBranchId);
+    if (branchLocs.length > 0) {
+      const firstLoc = branchLocs[0];
+      setLocationId(firstLoc.locationId);
+      const locBins = DEFAULT_STORAGE_BINS.filter((b) => b.locationId === firstLoc.locationId);
+      if (locBins.length > 0) {
+        setBinId(locBins[0].binId);
+      }
+    }
   };
+
+  const handleLocationChange = (newLocId: string) => {
+    setLocationId(newLocId);
+    const locBins = DEFAULT_STORAGE_BINS.filter((b) => b.locationId === newLocId);
+    if (locBins.length > 0) {
+      setBinId(locBins[0].binId);
+    }
+  };
+
+  const branchOptions = useMemo(() => {
+    return DEFAULT_BRANCHES.map((b) => ({
+      value: b.branchId,
+      label: b.branchName,
+    }));
+  }, []);
+
+  const locationOptions = useMemo(() => {
+    return DEFAULT_LOCATIONS.filter((l) => l.branchId === branchId).map((l) => ({
+      value: l.locationId,
+      label: l.locationName,
+    }));
+  }, [branchId]);
+
+  const binOptions = useMemo(() => {
+    return DEFAULT_STORAGE_BINS.filter((b) => b.locationId === locationId).map((b) => ({
+      value: b.binId,
+      label: `${b.binCode} • ${b.binName.replace(/Yard [A-Z] - /, "")}`,
+    }));
+  }, [locationId]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -121,116 +165,90 @@ export const InwardDashboardView: React.FC<InwardDashboardViewProps> = ({
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white px-5 py-4 rounded-xl border border-slate-200 shadow-xs">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white px-5 py-3.5 rounded-xl border border-slate-200 shadow-xs">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black text-slate-900 tracking-tight">
-              {isOpeningStock ? "Opening Stock Onboarding Dashboard" : "Bulk Inward Invoices & Staging Dashboard"}
-            </h1>
-          </div>
+          <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+            Bulk Inward Invoices & Staging Dashboard
+          </h1>
         </div>
 
-        {/* Mode Toggle */}
-        <div className="flex p-1 bg-slate-100 rounded-xl border border-slate-200">
-          <button
-            type="button"
-            onClick={() => toggleOpeningStock(false)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              !isOpeningStock
-                ? "bg-white text-blue-700 shadow-xs"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            Yamaha Inward Invoices
-          </button>
-          <button
-            type="button"
-            onClick={() => toggleOpeningStock(true)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              isOpeningStock
-                ? "bg-white text-blue-700 shadow-xs"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            Opening Stock
-          </button>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+            <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600" />
+            <span>Yamaha Factory Inward</span>
+          </span>
         </div>
       </div>
 
       {/* Target Showroom & Bay Configuration Card */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-          <Layers className="w-4 h-4 text-blue-600" />
-          <span>Inward Receiving Parameters</span>
-        </h3>
-
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          <div>
-            <label className="text-[11px] font-bold text-slate-600 block mb-1">Target Showroom / Branch:</label>
-            <select
-              value={branchId}
-              onChange={(e) => setBranchId(e.target.value)}
-              className="w-full text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500"
-            >
-              {DEFAULT_BRANCHES.map((b) => (
-                <option key={b.branchId} value={b.branchId}>
-                  {b.branchName}
-                </option>
-              ))}
-            </select>
+      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3.5">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+              <Layers className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-xs font-bold text-slate-900 tracking-tight leading-tight">
+                Inward Receiving Parameters
+              </h2>
+              <span className="text-[10px] text-slate-400">
+                Specify destination branch, PDI yard bay, and factory invoice for this shipment
+              </span>
+            </div>
           </div>
+        </div>
 
-          <div>
-            <label className="text-[11px] font-bold text-slate-600 block mb-1">Receiving Yard Location:</label>
-            <select
-              value={locationId}
-              onChange={(e) => setLocationId(e.target.value)}
-              className="w-full text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500"
-            >
-              {DEFAULT_LOCATIONS.filter((l) => l.branchId === branchId).map((l) => (
-                <option key={l.locationId} value={l.locationId}>
-                  {l.locationName}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 items-start">
+          {/* 1. Target Branch */}
+          <CustomDropdown
+            label="Target Showroom / Branch"
+            value={branchId}
+            onChange={handleBranchChange}
+            options={branchOptions}
+            placeholder="Select Branch"
+          />
 
-          <div>
-            <label className="text-[11px] font-bold text-slate-600 block mb-1">Storage Bay:</label>
-            <select
-              value={binId}
-              onChange={(e) => setBinId(e.target.value)}
-              className="w-full text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500"
-            >
-              {DEFAULT_STORAGE_BINS.map((b) => (
-                <option key={b.binId} value={b.binId}>
-                  {b.binCode} ({b.binName})
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* 2. Receiving Yard Location */}
+          <CustomDropdown
+            label="Receiving Yard Location"
+            value={locationId}
+            onChange={handleLocationChange}
+            options={locationOptions}
+            placeholder="Select Yard Location"
+          />
 
-          <div>
-            <label className="text-[11px] font-bold text-slate-600 block mb-1">
-              {isOpeningStock ? "Stock Batch Reference:" : "Yamaha Invoice Number:"}
+          {/* 3. Storage Bay */}
+          <CustomDropdown
+            label="Storage Bay"
+            value={binId}
+            onChange={(val) => setBinId(val)}
+            options={binOptions}
+            placeholder="Select Storage Bay"
+          />
+
+          {/* 4. Yamaha Invoice Number */}
+          <div className="w-full">
+            <label className="text-[11px] font-bold text-slate-700 block mb-1">
+              Yamaha Invoice Number
             </label>
             <input
               type="text"
               value={invoiceNo}
               onChange={(e) => setInvoiceNo(e.target.value)}
-              className="w-full text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 font-mono"
+              placeholder="e.g. YMH-INV-17967"
+              className="w-full h-9.5 px-3 bg-white rounded-xl border border-slate-300 hover:border-slate-400 focus:border-slate-900 text-xs font-bold font-mono text-blue-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-all shadow-2xs"
             />
           </div>
         </div>
       </div>
 
       {/* Upload Zone & Parser Workspace */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-6">
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-6">
         {!session ? (
-          <div className="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-3xl p-10 text-center bg-slate-50/50 transition-colors">
+          <div className="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-2xl p-10 text-center bg-slate-50/50 transition-colors">
             <FileSpreadsheet className="w-14 h-14 mx-auto text-blue-600 mb-3" />
             <h3 className="text-base font-bold text-slate-800">
-              Drag and drop your {isOpeningStock ? "Opening Stock Sheet" : "Yamaha Factory Dispatch Sheet"}
+              Drag and drop your Yamaha Factory Dispatch Sheet
             </h3>
             <p className="text-xs text-slate-500 mt-1 max-w-lg mx-auto">
               Auto-detects columns: Chassis Number (VIN), Engine Number, Model Name, Color, Key No, Battery No, and Mfg Date.
