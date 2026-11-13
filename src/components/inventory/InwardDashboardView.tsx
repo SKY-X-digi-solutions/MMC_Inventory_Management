@@ -1,0 +1,385 @@
+"use client";
+
+import React, { useState } from "react";
+import { StockImportSession } from "@/types/inventory";
+import { ImportParserService } from "@/services/importParser.service";
+import { InventoryService } from "@/services/inventory.service";
+import {
+  DEFAULT_BRANCHES,
+  DEFAULT_LOCATIONS,
+  DEFAULT_STORAGE_BINS,
+} from "@/services/modelCatalog.service";
+import {
+  UploadCloud,
+  FileSpreadsheet,
+  AlertTriangle,
+  Sparkles,
+  ArrowRight,
+  ShieldCheck,
+  CheckCircle2,
+  Layers,
+  History,
+} from "lucide-react";
+import toast from "react-hot-toast";
+
+interface InwardDashboardViewProps {
+  selectedBranch: string;
+  onRefresh: () => void;
+}
+
+export const InwardDashboardView: React.FC<InwardDashboardViewProps> = ({
+  selectedBranch,
+  onRefresh,
+}) => {
+  const [branchId, setBranchId] = useState(
+    selectedBranch !== "ALL" ? selectedBranch : DEFAULT_BRANCHES[0].branchId
+  );
+  const [locationId, setLocationId] = useState(DEFAULT_LOCATIONS[1].locationId); // Yard A
+  const [binId, setBinId] = useState(DEFAULT_STORAGE_BINS[0].binId); // YARD-A1
+  const [isOpeningStock, setIsOpeningStock] = useState(false);
+  const [invoiceNo, setInvoiceNo] = useState(`YMH-INV-${Date.now().toString().slice(-5)}`);
+  const [session, setSession] = useState<StockImportSession | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const toggleOpeningStock = (val: boolean) => {
+    setIsOpeningStock(val);
+    setInvoiceNo(val ? "OPENING-STOCK-MMC" : `YMH-INV-${Date.now().toString().slice(-5)}`);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const existingChassis = InventoryService.getExistingChassisSet();
+        const parsed = ImportParserService.parseDispatchSheet(
+          content,
+          file.name,
+          invoiceNo,
+          branchId,
+          existingChassis
+        );
+        setSession(parsed);
+        toast.success(`Parsed ${parsed.totalRows} rows from ${file.name}`);
+      } catch (err: any) {
+        toast.error(err.message || "Failed to parse file");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleLoadSample = () => {
+    try {
+      const sampleContent = ImportParserService.getSampleYamahaDispatchCSV();
+      const existingChassis = InventoryService.getExistingChassisSet();
+      const parsed = ImportParserService.parseDispatchSheet(
+        sampleContent,
+        "YAMAHA_FACTORY_DISPATCH_OCT2026.csv",
+        invoiceNo,
+        branchId,
+        existingChassis
+      );
+      setSession(parsed);
+      toast.success("Loaded sample Yamaha dispatch sheet with pre-configured duplicates for testing!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load sample");
+    }
+  };
+
+  const handleCommit = () => {
+    if (!session) return;
+    if (session.validRows === 0) {
+      toast.error("No valid vehicles to import. All rows are invalid or duplicates.");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const { addedCount, deductedCount } = InventoryService.commitBulkImport(
+        session,
+        locationId,
+        binId,
+        branchId
+      );
+
+      toast.success(
+        `Successfully registered ${addedCount} vehicles to stock! (${deductedCount} duplicates deducted)`,
+        { duration: 5000 }
+      );
+      setSession(null);
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to commit inventory");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-fadeIn">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white px-5 py-4 rounded-xl border border-slate-200 shadow-xs">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">
+              {isOpeningStock ? "Opening Stock Onboarding Dashboard" : "Bulk Inward Invoices & Staging Dashboard"}
+            </h1>
+          </div>
+        </div>
+
+        {/* Mode Toggle */}
+        <div className="flex p-1 bg-slate-100 rounded-xl border border-slate-200">
+          <button
+            type="button"
+            onClick={() => toggleOpeningStock(false)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              !isOpeningStock
+                ? "bg-white text-blue-700 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Yamaha Inward Invoices
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleOpeningStock(true)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              isOpeningStock
+                ? "bg-white text-blue-700 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Opening Stock
+          </button>
+        </div>
+      </div>
+
+      {/* Target Showroom & Bay Configuration Card */}
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+          <Layers className="w-4 h-4 text-blue-600" />
+          <span>Inward Receiving Parameters</span>
+        </h3>
+
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div>
+            <label className="text-[11px] font-bold text-slate-600 block mb-1">Target Showroom / Branch:</label>
+            <select
+              value={branchId}
+              onChange={(e) => setBranchId(e.target.value)}
+              className="w-full text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500"
+            >
+              {DEFAULT_BRANCHES.map((b) => (
+                <option key={b.branchId} value={b.branchId}>
+                  {b.branchName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-bold text-slate-600 block mb-1">Receiving Yard Location:</label>
+            <select
+              value={locationId}
+              onChange={(e) => setLocationId(e.target.value)}
+              className="w-full text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500"
+            >
+              {DEFAULT_LOCATIONS.filter((l) => l.branchId === branchId).map((l) => (
+                <option key={l.locationId} value={l.locationId}>
+                  {l.locationName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-bold text-slate-600 block mb-1">Storage Bay:</label>
+            <select
+              value={binId}
+              onChange={(e) => setBinId(e.target.value)}
+              className="w-full text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500"
+            >
+              {DEFAULT_STORAGE_BINS.map((b) => (
+                <option key={b.binId} value={b.binId}>
+                  {b.binCode} ({b.binName})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-bold text-slate-600 block mb-1">
+              {isOpeningStock ? "Stock Batch Reference:" : "Yamaha Invoice Number:"}
+            </label>
+            <input
+              type="text"
+              value={invoiceNo}
+              onChange={(e) => setInvoiceNo(e.target.value)}
+              className="w-full text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 font-mono"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Upload Zone & Parser Workspace */}
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-6">
+        {!session ? (
+          <div className="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-3xl p-10 text-center bg-slate-50/50 transition-colors">
+            <FileSpreadsheet className="w-14 h-14 mx-auto text-blue-600 mb-3" />
+            <h3 className="text-base font-bold text-slate-800">
+              Drag and drop your {isOpeningStock ? "Opening Stock Sheet" : "Yamaha Factory Dispatch Sheet"}
+            </h3>
+            <p className="text-xs text-slate-500 mt-1 max-w-lg mx-auto">
+              Auto-detects columns: Chassis Number (VIN), Engine Number, Model Name, Color, Key No, Battery No, and Mfg Date.
+            </p>
+
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <label className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs shadow-blue-600/20 transition-all flex items-center gap-2">
+                <UploadCloud className="w-4 h-4" />
+                <span>Upload CSV / Excel File</span>
+                <input
+                  type="file"
+                  accept=".csv,.txt"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+
+              <span className="text-xs text-slate-400">or</span>
+
+              <button
+                type="button"
+                onClick={handleLoadSample}
+                className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl border border-slate-300 transition-colors"
+              >
+                <Sparkles className="w-4 h-4 text-blue-600" />
+                <span>Load Sample Yamaha Dispatch Load (1-Click Test)</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {/* Summary Statistics */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Rows In File</span>
+                <div className="text-2xl font-black text-slate-900 mt-1">{session.totalRows}</div>
+                <span className="text-[10px] text-slate-400 truncate block mt-0.5">{session.fileName}</span>
+              </div>
+
+              <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200">
+                <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Valid to Inward</span>
+                <div className="text-2xl font-black text-emerald-600 mt-1">{session.validRows}</div>
+                <span className="text-[10px] text-emerald-700 font-semibold">Ready to Push into Live Stock</span>
+              </div>
+
+              <div className="bg-red-50 p-4 rounded-2xl border border-red-200">
+                <span className="text-[10px] font-bold text-red-700 uppercase tracking-wider">Duplicates Deducted</span>
+                <div className="text-2xl font-black text-red-600 mt-1">{session.duplicateRows}</div>
+                <span className="text-[10px] text-red-700 font-semibold">Auto-Excluded (Zero Risk)</span>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col justify-center gap-2">
+                <button
+                  onClick={() => setSession(null)}
+                  className="px-3 py-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl"
+                >
+                  Clear / Upload Different File
+                </button>
+              </div>
+            </div>
+
+            {/* Client Requirement Highlight */}
+            {session.duplicateRows > 0 && (
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 text-amber-900 text-xs">
+                <AlertTriangle className="w-5 h-5 shrink-0 text-amber-600" />
+                <div>
+                  <span className="font-bold">Client Usability Requirement Enforced:</span> {session.duplicateRows} duplicate chassis number(s) were identified and automatically deducted from the registration count.
+                </div>
+              </div>
+            )}
+
+            {/* Staging Data Grid */}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden max-h-80 overflow-y-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-100 text-[10px] font-bold text-slate-600 uppercase tracking-wider sticky top-0">
+                  <tr>
+                    <th className="py-3 px-3">Row</th>
+                    <th className="py-3 px-3">Verification</th>
+                    <th className="py-3 px-3">Chassis No (VIN)</th>
+                    <th className="py-3 px-3">Model</th>
+                    <th className="py-3 px-3">Color</th>
+                    <th className="py-3 px-3">Engine No</th>
+                    <th className="py-3 px-3">Key / Battery</th>
+                    <th className="py-3 px-3">Reason / Flag</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+                  {session.rows.map((r) => (
+                    <tr
+                      key={r.rowNumber}
+                      className={
+                        r.isDuplicate
+                          ? "bg-red-50/70 text-red-800"
+                          : !r.isValid
+                          ? "bg-amber-50/70 text-amber-800"
+                          : "hover:bg-slate-50 text-slate-800"
+                      }
+                    >
+                      <td className="py-2.5 px-3 font-bold">{r.rowNumber}</td>
+                      <td className="py-2.5 px-3">
+                        {r.isValid ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                            VALID
+                          </span>
+                        ) : r.isDuplicate ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-800">
+                            DUPLICATE
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                            ERROR
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 font-bold text-blue-900">{r.chassisNumber}</td>
+                      <td className="py-2.5 px-3 font-sans font-semibold">{r.modelName}</td>
+                      <td className="py-2.5 px-3 font-sans">{r.color}</td>
+                      <td className="py-2.5 px-3 text-slate-500">{r.engineNumber}</td>
+                      <td className="py-2.5 px-3 font-sans text-slate-600">
+                        {r.keyNumber || "KY-01"} • {r.batteryNumber || "EXIDE"}
+                      </td>
+                      <td className="py-2.5 px-3 font-sans text-xs">
+                        {r.duplicateReason || r.validationError || "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Action Bar */}
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200">
+              <span className="text-xs text-slate-600">
+                Ready to commit: <span className="font-bold text-slate-900">{session.validRows} vehicles</span> into {branchId}.
+              </span>
+
+              <button
+                onClick={handleCommit}
+                disabled={isProcessing || session.validRows === 0}
+                className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white text-xs font-bold rounded-xl shadow-xs shadow-blue-600/30 transition-all"
+              >
+                <span>Confirm & Inward {session.validRows} Vehicles to Stock</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
