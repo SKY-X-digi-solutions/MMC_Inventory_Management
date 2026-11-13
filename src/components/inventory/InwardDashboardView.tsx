@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { StockImportSession } from "@/types/inventory";
+import { StockImportSession, PurchaseVoucher } from "@/types/inventory";
 import { ImportParserService } from "@/services/importParser.service";
 import { InventoryService } from "@/services/inventory.service";
 import {
@@ -10,6 +10,7 @@ import {
   DEFAULT_STORAGE_BINS,
 } from "@/services/modelCatalog.service";
 import { CustomDropdown } from "@/components/ui/CustomDropdown";
+import { OfficialPurchaseVoucherDocument } from "@/components/inventory/OfficialPurchaseVoucherDocument";
 import {
   UploadCloud,
   FileSpreadsheet,
@@ -40,6 +41,8 @@ export const InwardDashboardView: React.FC<InwardDashboardViewProps> = ({
   const [invoiceNo, setInvoiceNo] = useState(`YMH-INV-${Date.now().toString().slice(-5)}`);
   const [session, setSession] = useState<StockImportSession | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [activeVoucher, setActiveVoucher] = useState<PurchaseVoucher | null>(null);
+  const [showVoucherDocument, setShowVoucherDocument] = useState(false);
 
   // Sync selected branch if changed from outside
   useEffect(() => {
@@ -142,16 +145,22 @@ export const InwardDashboardView: React.FC<InwardDashboardViewProps> = ({
 
     setIsProcessing(true);
     try {
-      const { addedCount, deductedCount } = InventoryService.commitBulkImport(
+      const { addedCount, deductedCount, voucher } = InventoryService.commitBulkImport(
         session,
         locationId,
         binId,
         branchId
       );
 
+      // Automatically display the official purchase voucher directly on the dashboard
+      if (voucher) {
+        setActiveVoucher(voucher);
+        setShowVoucherDocument(true);
+      }
+
       toast.success(
-        `Successfully registered ${addedCount} vehicles to stock! (${deductedCount} duplicates deducted)`,
-        { duration: 5000 }
+        `Successfully registered ${addedCount} vehicles to stock! Official Voucher ${voucher?.voucherNumber || ""} generated.`,
+        { duration: 6000 }
       );
       setSession(null);
       onRefresh();
@@ -164,21 +173,44 @@ export const InwardDashboardView: React.FC<InwardDashboardViewProps> = ({
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white px-5 py-3.5 rounded-xl border border-slate-200 shadow-xs">
-        <div>
-          <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
-            Bulk Inward Invoices & Staging Dashboard
-          </h1>
-        </div>
+      {/* If voucher view is active, render the official document inline directly on the dashboard */}
+      {showVoucherDocument && activeVoucher ? (
+        <OfficialPurchaseVoucherDocument
+          voucher={activeVoucher}
+          onBack={() => setShowVoucherDocument(false)}
+        />
+      ) : (
+        <>
+          {/* Top Header */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white px-5 py-3.5 rounded-xl border border-slate-200 shadow-xs">
+            <div>
+              <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+                Bulk Inward Invoices & Staging Dashboard
+              </h1>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Verify chassis and inward Yamaha factory dispatches directly to yard inventory
+              </p>
+            </div>
 
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
-            <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600" />
-            <span>Yamaha Factory Inward</span>
-          </span>
-        </div>
-      </div>
+            <div className="flex items-center gap-2">
+              {activeVoucher && (
+                <button
+                  type="button"
+                  onClick={() => setShowVoucherDocument(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 transition-colors shadow-2xs cursor-pointer"
+                  title="View Official Purchase Voucher Document"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600" />
+                  <span>View Voucher ({activeVoucher.voucherNumber})</span>
+                </button>
+              )}
+
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600" />
+                <span>Yamaha Factory Inward</span>
+              </span>
+            </div>
+          </div>
 
       {/* Target Showroom & Bay Configuration Card */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3.5">
@@ -388,7 +420,7 @@ export const InwardDashboardView: React.FC<InwardDashboardViewProps> = ({
               <button
                 onClick={handleCommit}
                 disabled={isProcessing || session.validRows === 0}
-                className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white text-xs font-bold rounded-xl shadow-xs shadow-blue-600/30 transition-all"
+                className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white text-xs font-bold rounded-xl shadow-xs shadow-blue-600/30 transition-all cursor-pointer"
               >
                 <span>Confirm & Inward {session.validRows} Vehicles to Stock</span>
                 <ArrowRight className="w-4 h-4" />
@@ -397,6 +429,8 @@ export const InwardDashboardView: React.FC<InwardDashboardViewProps> = ({
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 };

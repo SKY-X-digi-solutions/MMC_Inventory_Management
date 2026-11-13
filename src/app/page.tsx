@@ -35,6 +35,7 @@ export default function InventoryDashboardPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("stock-yard");
   const [selectedBranch, setSelectedBranch] = useState<string>("ALL");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [kpiStatusFilter, setKpiStatusFilter] = useState<string>("ALL");
 
   // Core Data State
   const [vehicles, setVehicles] = useState<VehicleRecord[]>([]);
@@ -76,6 +77,37 @@ export default function InventoryDashboardPage() {
   // Handle Tab Switch directly without opening popup modals
   const handleTabChange = (tab: ActiveTab) => {
     setActiveTab(tab);
+    if (tab !== "stock-yard") {
+      setKpiStatusFilter("ALL");
+    }
+  };
+
+  // Derive dynamic breadcrumb folder sub-path from active KPI filter
+  const getKpiSubPath = (): string | null => {
+    if (activeTab !== "stock-yard") return null;
+    switch (kpiStatusFilter) {
+      case "TOTAL":
+        return "Total Stock";
+      case "AVAILABLE":
+        return "Available";
+      case "RESERVED":
+        return "Reserved";
+      case "IN_TRANSIT":
+        return "In Transit";
+      case "SOLD":
+        return "Sold / Delivered";
+      default:
+        return null;
+    }
+  };
+
+  const handleNavigateHub = () => {
+    setActiveTab("stock-yard");
+    setKpiStatusFilter("ALL");
+  };
+
+  const handleNavigateTabRoot = () => {
+    setKpiStatusFilter("ALL");
   };
 
   // Actions
@@ -160,6 +192,9 @@ export default function InventoryDashboardPage() {
               ? "Model Masters"
               : "Movement Audit Log"
           }
+          activeSubPath={getKpiSubPath()}
+          onNavigateHub={handleNavigateHub}
+          onNavigateTabRoot={handleNavigateTabRoot}
         />
 
         {/* Dynamic Full Dashboard Workspace View */}
@@ -170,6 +205,8 @@ export default function InventoryDashboardPage() {
                 vehicles={vehicles}
                 summaryList={summaryList}
                 selectedBranch={selectedBranch}
+                statusFilter={kpiStatusFilter}
+                onStatusFilterChange={setKpiStatusFilter}
                 onSelectVehicle={(v) => setSelectedVehicleForDrawer(v)}
                 onOpenInward={() => setActiveTab("inward-upload")}
                 onOpenVoucher={() => setActiveTab("purchase-voucher")}

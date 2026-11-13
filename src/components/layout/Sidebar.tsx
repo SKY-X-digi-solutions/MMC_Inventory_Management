@@ -215,29 +215,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Bottom Footer: Open and Close Drawer Toggle below options */}
       {onToggleCollapse && (
-        <div className={`border-t border-slate-200 bg-white shrink-0 ${isCollapsed ? "p-2 flex items-center justify-center" : "p-2.5"}`}>
-          {!isCollapsed ? (
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer text-xs font-bold border border-slate-200/80"
-              title="Close sidebar drawer"
-              aria-label="Close sidebar drawer"
-            >
-              <span className="text-[11.5px] font-bold text-slate-600">Collapse Menu</span>
-              <PanelLeftClose className="w-4 h-4 text-slate-500" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              className="h-9 w-9 flex items-center justify-center rounded-xl text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer border border-blue-200/60 shadow-2xs"
-              title="Open sidebar drawer"
-              aria-label="Open sidebar drawer"
-            >
+        <div
+          className={`border-t border-slate-200/80 bg-white shrink-0 ${
+            isCollapsed ? "p-2 flex items-center justify-center" : "p-2.5 flex items-center justify-end"
+          }`}
+        >
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className={`flex items-center justify-center rounded-xl transition-all cursor-pointer shadow-2xs group ${
+              isCollapsed
+                ? "h-9 w-9 text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200/60"
+                : "h-8.5 w-8.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 border border-slate-200/80"
+            }`}
+            title={isCollapsed ? "Expand sidebar menu" : "Collapse sidebar menu"}
+            aria-label={isCollapsed ? "Expand sidebar menu" : "Collapse sidebar menu"}
+          >
+            {isCollapsed ? (
               <PanelLeftOpen className="w-4 h-4 text-blue-600" />
-            </button>
-          )}
+            ) : (
+              <PanelLeftClose className="w-4 h-4 text-slate-500 group-hover:text-blue-600 transition-colors" />
+            )}
+          </button>
         </div>
       )}
     </aside>

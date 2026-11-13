@@ -23,12 +23,18 @@ interface HeaderProps {
   selectedBranch: string;
   onBranchChange: (branchId: string) => void;
   activeTabTitle?: string;
+  activeSubPath?: string | null;
+  onNavigateHub?: () => void;
+  onNavigateTabRoot?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   selectedBranch,
   onBranchChange,
   activeTabTitle = "Stock Yard & Live Inventory",
+  activeSubPath = null,
+  onNavigateHub,
+  onNavigateTabRoot,
 }) => {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [isBranchOpen, setIsBranchOpen] = useState(false);
@@ -67,11 +73,35 @@ export const Header: React.FC<HeaderProps> = ({
     <>
       {/* Top Navbar Header aligned straight to the right of the Sidebar */}
       <header className="w-full h-16 border-b border-slate-200 bg-white px-5 sm:px-6 flex items-center justify-between sticky top-0 z-40 shadow-xs shrink-0 font-sans">
-        {/* Left: Section Context Breadcrumb (No Drawer Button) */}
+        {/* Left: Section Context Breadcrumb (Interactive Folder Path) */}
         <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-          <span className="text-slate-400">Inventory Hub</span>
-          <span className="text-slate-300">/</span>
-          <span className="text-slate-900 font-bold">{activeTabTitle}</span>
+          <button
+            type="button"
+            onClick={onNavigateHub}
+            className="text-slate-400 font-medium hover:text-blue-600 transition-colors cursor-pointer"
+            title="Navigate to Inventory Hub overview"
+          >
+            Inventory Hub
+          </button>
+          <span className="text-slate-300 select-none">/</span>
+          {activeSubPath ? (
+            <>
+              <button
+                type="button"
+                onClick={onNavigateTabRoot}
+                className="text-slate-500 font-medium hover:text-blue-600 transition-colors cursor-pointer"
+                title={`Back to ${activeTabTitle}`}
+              >
+                {activeTabTitle}
+              </button>
+              <span className="text-slate-300 select-none">/</span>
+              <span className="text-slate-900 font-bold">
+                {activeSubPath}
+              </span>
+            </>
+          ) : (
+            <span className="text-slate-900 font-bold">{activeTabTitle}</span>
+          )}
         </div>
 
         {/* Right: Locations Button nearby Profile & Logout */}

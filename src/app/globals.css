@@ -76,3 +76,16 @@ button:disabled,
   background: #94a3b8;
 }
 
+/* Print optimization for official vouchers & invoices */
+@media print {
+  header, aside, nav, .print\:hidden {
+    display: none !important;
+  }
+  body, main {
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+}
+

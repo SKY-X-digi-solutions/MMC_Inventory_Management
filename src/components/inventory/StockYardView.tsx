@@ -26,6 +26,8 @@ interface StockYardViewProps {
   vehicles: VehicleRecord[];
   summaryList: InventorySummary[];
   selectedBranch: string;
+  statusFilter?: string;
+  onStatusFilterChange?: (status: string) => void;
   onSelectVehicle: (vehicle: VehicleRecord) => void;
   onOpenInward: () => void;
   onOpenVoucher: () => void;
@@ -66,6 +68,8 @@ export const StockYardView: React.FC<StockYardViewProps> = ({
   vehicles,
   summaryList,
   selectedBranch,
+  statusFilter: propStatusFilter,
+  onStatusFilterChange,
   onSelectVehicle,
   onOpenInward,
   onOpenVoucher,
@@ -75,7 +79,16 @@ export const StockYardView: React.FC<StockYardViewProps> = ({
 }) => {
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [internalStatusFilter, setInternalStatusFilter] = useState<string>("ALL");
+  const statusFilter = propStatusFilter !== undefined ? propStatusFilter : internalStatusFilter;
+
+  const handleStatusChange = (newStatus: string) => {
+    if (onStatusFilterChange) {
+      onStatusFilterChange(newStatus);
+    } else {
+      setInternalStatusFilter(newStatus);
+    }
+  };
 
   // Vehicle Filters (Field Visibility & Series/Model Selection)
   const [filterTab, setFilterTab] = useState<"fields" | "models">("fields");
@@ -251,7 +264,7 @@ export const StockYardView: React.FC<StockYardViewProps> = ({
 
   const handleResetAllFilters = () => {
     setSearchTerm("");
-    setStatusFilter("ALL");
+    handleStatusChange("ALL");
     const allMods: Record<string, boolean> = {};
     modelOptions.forEach((m) => (allMods[m.modelId] = true));
     setSelectedModels(allMods);
@@ -271,7 +284,7 @@ export const StockYardView: React.FC<StockYardViewProps> = ({
       // Status filter (from interactive KPI cards)
       if (statusFilter === "SOLD") {
         if (v.status !== "SOLD" && v.status !== "DELIVERED") return false;
-      } else if (statusFilter !== "ALL" && v.status !== statusFilter) {
+      } else if (statusFilter !== "ALL" && statusFilter !== "TOTAL" && v.status !== statusFilter) {
         return false;
       }
 
@@ -359,7 +372,7 @@ export const StockYardView: React.FC<StockYardViewProps> = ({
 
   const hasActiveFilters = 
     searchTerm.trim() !== "" || 
-    statusFilter !== "ALL" || 
+    (statusFilter !== "ALL" && statusFilter !== "TOTAL") || 
     !isAllModelsSelected ||
     activeFieldsCount > 0 ||
     datePreset !== "all" || 
@@ -410,11 +423,11 @@ export const StockYardView: React.FC<StockYardViewProps> = ({
         {/* 1. Total Stock */}
         <div
           onClick={() => {
-            setStatusFilter("ALL");
+            handleStatusChange("TOTAL");
             setCurrentPage(1);
           }}
           className={`p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer shadow-xs select-none hover:shadow-md hover:scale-[1.01] ${
-            statusFilter === "ALL"
+            statusFilter === "ALL" || statusFilter === "TOTAL"
               ? "bg-blue-50/40 border-2 border-blue-400/90 ring-2 ring-blue-100"
               : "bg-white border-slate-200/90 hover:border-slate-300"
           }`}
@@ -422,7 +435,7 @@ export const StockYardView: React.FC<StockYardViewProps> = ({
         >
           <div className="flex items-center justify-between">
             <span className="text-[10.5px] font-bold text-slate-600 uppercase tracking-wider">Total Stock</span>
-            {statusFilter === "ALL" && (
+            {(statusFilter === "ALL" || statusFilter === "TOTAL") && (
               <span className="text-[9px] font-bold px-1.5 py-0.2 bg-blue-600 text-white rounded-full">Active</span>
             )}
           </div>
@@ -433,7 +446,7 @@ export const StockYardView: React.FC<StockYardViewProps> = ({
         {/* 2. Available */}
         <div
           onClick={() => {
-            setStatusFilter("AVAILABLE");
+            handleStatusChange("AVAILABLE");
             setCurrentPage(1);
           }}
           className={`p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer shadow-xs select-none hover:shadow-md hover:scale-[1.01] ${
@@ -456,7 +469,7 @@ export const StockYardView: React.FC<StockYardViewProps> = ({
         {/* 3. Reserved */}
         <div
           onClick={() => {
-            setStatusFilter("RESERVED");
+            handleStatusChange("RESERVED");
             setCurrentPage(1);
           }}
           className={`p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer shadow-xs select-none hover:shadow-md hover:scale-[1.01] ${
@@ -479,7 +492,7 @@ export const StockYardView: React.FC<StockYardViewProps> = ({
         {/* 4. In Transit */}
         <div
           onClick={() => {
-            setStatusFilter("IN_TRANSIT");
+            handleStatusChange("IN_TRANSIT");
             setCurrentPage(1);
           }}
           className={`p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer shadow-xs select-none hover:shadow-md hover:scale-[1.01] ${
@@ -502,7 +515,7 @@ export const StockYardView: React.FC<StockYardViewProps> = ({
         {/* 5. Sold / Delivered */}
         <div
           onClick={() => {
-            setStatusFilter("SOLD");
+            handleStatusChange("SOLD");
             setCurrentPage(1);
           }}
           className={`p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer shadow-xs select-none hover:shadow-md hover:scale-[1.01] ${
@@ -896,10 +909,10 @@ export const StockYardView: React.FC<StockYardViewProps> = ({
               </span>
             )}
 
-            {statusFilter !== "ALL" && (
+            {statusFilter !== "ALL" && statusFilter !== "TOTAL" && (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-semibold">
-                Status: {statusFilter === "SOLD" ? "Sold / Delivered" : statusFilter}
-                <X className="w-3 h-3 cursor-pointer hover:text-emerald-950" onClick={() => setStatusFilter("ALL")} />
+                Status: {statusFilter === "SOLD" ? "Sold / Delivered" : statusFilter === "IN_TRANSIT" ? "In Transit" : statusFilter === "AVAILABLE" ? "Available" : statusFilter === "RESERVED" ? "Reserved" : statusFilter}
+                <X className="w-3 h-3 cursor-pointer hover:text-emerald-950" onClick={() => handleStatusChange("ALL")} />
               </span>
             )}
 

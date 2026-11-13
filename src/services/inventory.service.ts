@@ -591,7 +591,7 @@ export class InventoryService {
         purchaseId: "PUR-101",
         voucherNumber: "PV-000101",
         supplierId: "SUP001",
-        supplierName: "Yamaha Motor India Pvt Ltd",
+        supplierName: "India Yamaha Motor Pvt. Ltd.",
         supplierInvoiceNo: "YMH-INV-8891",
         purchaseDate: "2026-10-15",
         branchId: "BR001",
@@ -601,16 +601,78 @@ export class InventoryService {
         storageBinId: "BIN001",
         binCode: "YARD-A1",
         taxClassId: "GST001",
-        totalQuantity: 8,
-        subtotal: 580000,
+        totalQuantity: 5,
+        subtotal: 327950,
         discountTotal: 0,
-        taxAmount: 162400,
-        grandTotal: 742400,
+        taxAmount: 91826,
+        grandTotal: 419776,
         status: "POSTED",
         createdBy: "Inventory Head",
         createdAt: "2026-10-15T10:30:00.000Z",
         postedAt: "2026-10-15T10:35:00.000Z",
-        items: [],
+        items: [
+          {
+            itemId: "ITM-01",
+            modelId: "MOD001",
+            modelName: "Fascino 125 Fi Hybrid DLX",
+            modelCode: "DG51/BGP4",
+            colorId: "COL001",
+            colorName: "Cyan Blue",
+            quantity: 3,
+            purchaseRate: 65590,
+            grossAmount: 196770,
+            chassisList: [
+              {
+                chassisNumber: "ME1RG431000849201",
+                engineNumber: "E3W104928120",
+                keyNumber: "KY-8821",
+                batteryNumber: "EX-9921",
+                manufacturingDate: "2026-10-01",
+              },
+              {
+                chassisNumber: "ME1RG431000849202",
+                engineNumber: "E3W104928121",
+                keyNumber: "KY-8822",
+                batteryNumber: "EX-9922",
+                manufacturingDate: "2026-10-01",
+              },
+              {
+                chassisNumber: "ME1RG431000849203",
+                engineNumber: "E3W104928122",
+                keyNumber: "KY-8823",
+                batteryNumber: "EX-9923",
+                manufacturingDate: "2026-10-01",
+              },
+            ],
+          },
+          {
+            itemId: "ITM-02",
+            modelId: "MOD002",
+            modelName: "RayZR 125 Fi Hybrid Disc",
+            modelCode: "BGPE/DG54",
+            colorId: "COL004",
+            colorName: "Matte Red",
+            quantity: 2,
+            purchaseRate: 64200,
+            grossAmount: 128400,
+            chassisList: [
+              {
+                chassisNumber: "ME1RG521000732101",
+                engineNumber: "E3W108421001",
+                keyNumber: "KY-9104",
+                batteryNumber: "AM-3011",
+                manufacturingDate: "2026-10-02",
+              },
+              {
+                chassisNumber: "ME1RG521000732102",
+                engineNumber: "E3W108421002",
+                keyNumber: "KY-9105",
+                batteryNumber: "AM-3012",
+                manufacturingDate: "2026-10-02",
+              },
+            ],
+          },
+        ],
       },
     ]);
     if (branchId && branchId !== "ALL") {
@@ -753,7 +815,7 @@ export class InventoryService {
     locationId: string,
     binId: string,
     branchId: string
-  ): { addedCount: number; deductedCount: number } {
+  ): { addedCount: number; deductedCount: number; voucher: PurchaseVoucher } {
     const branch = DEFAULT_BRANCHES.find((b) => b.branchId === branchId) || DEFAULT_BRANCHES[0];
     const location = DEFAULT_LOCATIONS.find((l) => l.locationId === locationId) || DEFAULT_LOCATIONS[1];
     const bin = DEFAULT_STORAGE_BINS.find((b) => b.binId === binId) || DEFAULT_STORAGE_BINS[0];
@@ -848,7 +910,85 @@ export class InventoryService {
     this.save(STORAGE_KEYS.VEHICLES, updatedVehicles);
     this.save(STORAGE_KEYS.MOVEMENTS, updatedMovements);
 
-    return { addedCount, deductedCount };
+    // Group imported vehicles into structured voucher line items
+    const itemsMap = new Map<string, {
+      itemId: string;
+      modelId: string;
+      modelName: string;
+      modelCode: string;
+      colorId: string;
+      colorName: string;
+      quantity: number;
+      purchaseRate: number;
+      grossAmount: number;
+      chassisList: any[];
+    }>();
+
+    newVehicles.forEach((v) => {
+      const key = `${v.modelId}_${v.colorId}`;
+      if (!itemsMap.has(key)) {
+        itemsMap.set(key, {
+          itemId: `ITEM-${key}`,
+          modelId: v.modelId,
+          modelName: v.modelName,
+          modelCode: v.modelCode,
+          colorId: v.colorId,
+          colorName: v.colorName,
+          quantity: 0,
+          purchaseRate: v.purchaseRate,
+          grossAmount: 0,
+          chassisList: [],
+        });
+      }
+      const it = itemsMap.get(key)!;
+      it.quantity += 1;
+      it.grossAmount += v.purchaseRate;
+      it.chassisList.push({
+        chassisNumber: v.chassisNumber,
+        engineNumber: v.engineNumber,
+        keyNumber: v.keyNumber,
+        batteryNumber: v.batteryNumber,
+        manufacturingDate: v.manufacturingDate,
+        storageBinId: v.storageBinId,
+        binCode: v.binCode,
+      });
+    });
+
+    const items = Array.from(itemsMap.values());
+    const subtotal = items.reduce((sum, it) => sum + it.grossAmount, 0);
+    const taxAmount = Math.round(subtotal * 0.28);
+    const grandTotal = subtotal + taxAmount;
+
+    const newVoucher: PurchaseVoucher = {
+      purchaseId: voucherId,
+      voucherNumber: voucherId,
+      supplierId: "SUP001",
+      supplierName: "India Yamaha Motor Pvt. Ltd.",
+      supplierInvoiceNo: session.supplierInvoiceNo || `YMH-INV-${Date.now().toString().slice(-4)}`,
+      purchaseDate: now.split("T")[0],
+      branchId: branch.branchId,
+      branchName: branch.branchName,
+      locationId: location.locationId,
+      locationName: location.locationName,
+      storageBinId: bin.binId,
+      binCode: bin.binCode,
+      taxClassId: "GST001",
+      totalQuantity: newVehicles.length,
+      subtotal,
+      discountTotal: 0,
+      taxAmount,
+      grandTotal,
+      status: "POSTED",
+      createdBy: "Inventory Head",
+      createdAt: now,
+      postedAt: now,
+      items,
+    };
+
+    const currentVouchers = this.getPurchaseVouchers();
+    this.save(STORAGE_KEYS.PURCHASES, [newVoucher, ...currentVouchers]);
+
+    return { addedCount, deductedCount, voucher: newVoucher };
   }
 
   /**
