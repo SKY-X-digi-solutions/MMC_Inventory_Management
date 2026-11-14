@@ -46,6 +46,7 @@ export default function InventoryDashboardPage() {
   // Modals & Drawer State
   const [selectedVehicleForDrawer, setSelectedVehicleForDrawer] = useState<VehicleRecord | null>(null);
   const [preSelectedVehicleForAction, setPreSelectedVehicleForAction] = useState<VehicleRecord | null>(null);
+  const [selectedModelIdForDetails, setSelectedModelIdForDetails] = useState<string | null>(null);
 
   // Authenticate session on client
   useEffect(() => {
@@ -80,6 +81,9 @@ export default function InventoryDashboardPage() {
     setActiveTab(tab);
     if (tab !== "stock-yard") {
       setKpiStatusFilter("ALL");
+    }
+    if (tab !== "model-masters") {
+      setSelectedModelIdForDetails(null);
     }
   };
 
@@ -126,6 +130,12 @@ export default function InventoryDashboardPage() {
   const handleOpenTransfer = (vehicle?: VehicleRecord) => {
     setPreSelectedVehicleForAction(vehicle || null);
     setActiveTab("transfers");
+  };
+
+  const handleViewModelMaster = (vehicle: VehicleRecord) => {
+    setSelectedVehicleForDrawer(null);
+    setSelectedModelIdForDetails(vehicle.modelId || vehicle.modelName);
+    setActiveTab("model-masters");
   };
 
   if (isCheckingAuth) {
@@ -211,6 +221,7 @@ export default function InventoryDashboardPage() {
                 statusFilter={kpiStatusFilter}
                 onStatusFilterChange={setKpiStatusFilter}
                 onSelectVehicle={(v) => setSelectedVehicleForDrawer(v)}
+                onViewModelMaster={handleViewModelMaster}
                 onOpenInward={() => setActiveTab("inward-upload")}
                 onOpenVoucher={() => setActiveTab("purchase-voucher")}
                 onOpenTransfer={handleOpenTransfer}
@@ -263,6 +274,8 @@ export default function InventoryDashboardPage() {
             {activeTab === "model-masters" && (
               <ModelMastersDashboardView
                 onRefresh={refreshData}
+                initialModelId={selectedModelIdForDetails}
+                onClearInitialModel={() => setSelectedModelIdForDetails(null)}
               />
             )}
 
@@ -279,6 +292,7 @@ export default function InventoryDashboardPage() {
         onClose={() => setSelectedVehicleForDrawer(null)}
         onOpenSale={handleOpenSale}
         onOpenTransfer={handleOpenTransfer}
+        onViewModelMaster={handleViewModelMaster}
         onStatusUpdated={refreshData}
       />
     </div>

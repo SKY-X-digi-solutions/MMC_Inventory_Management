@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   Clock,
   ShieldCheck,
+  Eye,
 } from "lucide-react";
 
 interface VehicleDetailDrawerProps {
@@ -23,6 +24,7 @@ interface VehicleDetailDrawerProps {
   onClose: () => void;
   onOpenSale: (vehicle: VehicleRecord) => void;
   onOpenTransfer: (vehicle: VehicleRecord) => void;
+  onViewModelMaster?: (vehicle: VehicleRecord) => void;
   onStatusUpdated?: () => void;
 }
 
@@ -31,6 +33,7 @@ export const VehicleDetailDrawer: React.FC<VehicleDetailDrawerProps> = ({
   onClose,
   onOpenSale,
   onOpenTransfer,
+  onViewModelMaster,
   onStatusUpdated,
 }) => {
   if (!vehicle) return null;
@@ -68,6 +71,19 @@ export const VehicleDetailDrawer: React.FC<VehicleDetailDrawerProps> = ({
               <span>•</span>
               <span className="font-mono">{vehicle.modelCode}</span>
             </div>
+            {onViewModelMaster && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onViewModelMaster(vehicle);
+                }}
+                className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white rounded-lg text-[11px] font-bold border border-blue-200 transition-colors cursor-pointer shadow-2xs group"
+                title="Open this model in Model Masters Dashboard"
+              >
+                <Eye className="w-3.5 h-3.5 text-blue-600 group-hover:text-white transition-colors" />
+                <span>View Model Master</span>
+              </button>
+            )}
           </div>
 
           <button

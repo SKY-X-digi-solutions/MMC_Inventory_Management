@@ -44,10 +44,14 @@ import toast from "react-hot-toast";
 
 interface ModelMastersDashboardViewProps {
   onRefresh?: () => void;
+  initialModelId?: string | null;
+  onClearInitialModel?: () => void;
 }
 
 export const ModelMastersDashboardView: React.FC<ModelMastersDashboardViewProps> = ({
   onRefresh,
+  initialModelId,
+  onClearInitialModel,
 }) => {
   const [models, setModels] = useState<VehicleModel[]>(InventoryService.getModels());
   const [vehicles, setVehicles] = useState<VehicleRecord[]>([]);
@@ -132,17 +136,39 @@ export const ModelMastersDashboardView: React.FC<ModelMastersDashboardViewProps>
     setVehicles(InventoryService.getVehicles());
   }, []);
 
+  // Auto-select model when navigating from Stock Yard or external links
+  useEffect(() => {
+    if (initialModelId) {
+      const q = initialModelId.trim().toLowerCase();
+      const currentModels = models.length > 0 ? models : InventoryService.getModels();
+      const target = currentModels.find(
+        (m) =>
+          m.modelId.toLowerCase() === q ||
+          m.modelCode.toLowerCase() === q ||
+          m.modelName.toLowerCase() === q ||
+          m.modelName.toLowerCase().includes(q) ||
+          q.includes(m.modelName.toLowerCase()) ||
+          q.includes(m.modelCode.toLowerCase())
+      );
+      if (target) {
+        setSelectedModelForDetails(target);
+        setActiveDetailTab("units");
+      }
+    }
+  }, [initialModelId, models]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setSelectedModelForDetails(null);
+        onClearInitialModel?.();
       }
     };
     if (selectedModelForDetails) {
       window.addEventListener("keydown", handleKeyDown);
     }
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedModelForDetails]);
+  }, [selectedModelForDetails, onClearInitialModel]);
 
   // Compute live stock statistics for currently selected model
   const modelVehicles = useMemo(() => {
@@ -262,7 +288,10 @@ export const ModelMastersDashboardView: React.FC<ModelMastersDashboardViewProps>
         <div className="bg-white px-4 py-3 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <button
-              onClick={() => setSelectedModelForDetails(null)}
+              onClick={() => {
+                setSelectedModelForDetails(null);
+                onClearInitialModel?.();
+              }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 font-bold text-xs rounded-xl transition-colors shrink-0 shadow-2xs"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -1131,7 +1160,10 @@ export const ModelMastersDashboardView: React.FC<ModelMastersDashboardViewProps>
             <span>Official MMC Yamaha Dealership Identity • Maruthi Motors Yamaha Tirupattur</span>
           </div>
           <button
-            onClick={() => setSelectedModelForDetails(null)}
+            onClick={() => {
+              setSelectedModelForDetails(null);
+              onClearInitialModel?.();
+            }}
             className="text-blue-600 hover:text-blue-800 font-bold hover:underline"
           >
             ← Back to Models List

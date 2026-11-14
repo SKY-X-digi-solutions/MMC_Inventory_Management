@@ -29,6 +29,7 @@ interface StockYardViewProps {
   statusFilter?: string;
   onStatusFilterChange?: (status: string) => void;
   onSelectVehicle: (vehicle: VehicleRecord) => void;
+  onViewModelMaster?: (vehicle: VehicleRecord) => void;
   onOpenInward: () => void;
   onOpenVoucher: () => void;
   onOpenTransfer: (preSelectedVehicle?: VehicleRecord) => void;
@@ -71,6 +72,7 @@ export const StockYardView: React.FC<StockYardViewProps> = ({
   statusFilter: propStatusFilter,
   onStatusFilterChange,
   onSelectVehicle,
+  onViewModelMaster,
   onOpenInward,
   onOpenVoucher,
   onOpenTransfer,
@@ -1079,31 +1081,28 @@ export const StockYardView: React.FC<StockYardViewProps> = ({
                       <td className="py-3.5 px-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1.5">
                           {v.status === "AVAILABLE" && (
-                            <>
-                              <button
-                                onClick={() => onOpenSale(v)}
-                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[11px] transition-colors shadow-2xs cursor-pointer"
-                                title="Sell Unit & Inward Invoice"
-                              >
-                                Sell
-                              </button>
-
-                              <button
-                                onClick={() => onOpenTransfer(v)}
-                                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-[11px] border border-slate-300 transition-colors cursor-pointer"
-                                title="Transfer to Branch or Sub-Dealer"
-                              >
-                                Transfer
-                              </button>
-                            </>
+                            <button
+                              onClick={() => onOpenTransfer(v)}
+                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-[11px] border border-slate-300 transition-colors cursor-pointer"
+                              title="Transfer to Branch or Sub-Dealer"
+                            >
+                              Transfer
+                            </button>
                           )}
 
                           <button
-                            onClick={() => onSelectVehicle(v)}
-                            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                            title="View Vehicle Identity Drawer"
+                            onClick={() => {
+                              if (onViewModelMaster) {
+                                onViewModelMaster(v);
+                              } else {
+                                onSelectVehicle(v);
+                              }
+                            }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white font-semibold rounded-lg text-[11px] border border-blue-200 hover:border-blue-600 transition-all cursor-pointer shadow-2xs group"
+                            title="View in Model Masters Dashboard"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye className="w-3.5 h-3.5 text-blue-600 group-hover:text-white transition-colors" />
+                            <span>View</span>
                           </button>
                         </div>
                       </td>
