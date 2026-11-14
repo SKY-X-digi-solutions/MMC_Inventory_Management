@@ -36,6 +36,9 @@ import {
   Check,
   Calendar,
   Sliders,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -58,6 +61,72 @@ export const ModelMastersDashboardView: React.FC<ModelMastersDashboardViewProps>
   >("units");
   const [unitStatusFilter, setUnitStatusFilter] = useState<string>("ALL");
   const [unitSearch, setUnitSearch] = useState<string>("");
+
+  // Model catalog filtration & pagination state
+  const [modelSearch, setModelSearch] = useState<string>("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
+  const [modelCurrentPage, setModelCurrentPage] = useState<number>(1);
+  const [modelPageSize, setModelPageSize] = useState<number>(5);
+
+  // Extract unique categories for filter
+  const categoriesList = useMemo(() => {
+    const set = new Set<string>();
+    models.forEach((m) => {
+      if (m.vehicleType) set.add(m.vehicleType.toUpperCase());
+    });
+    return Array.from(set).sort();
+  }, [models]);
+
+  // Category counts for quick filter chips
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { ALL: models.length };
+    models.forEach((m) => {
+      const cat = m.vehicleType?.toUpperCase() || "OTHER";
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+    return counts;
+  }, [models]);
+
+  // Reset page when search or category filter changes
+  useEffect(() => {
+    setModelCurrentPage(1);
+  }, [modelSearch, categoryFilter]);
+
+  // Filtered models
+  const filteredModels = useMemo(() => {
+    const q = modelSearch.trim().toLowerCase();
+    return models.filter((m) => {
+      const matchesCategory =
+        categoryFilter === "ALL" ||
+        (m.vehicleType && m.vehicleType.toUpperCase() === categoryFilter.toUpperCase());
+
+      const matchesSearch =
+        !q ||
+        m.modelName.toLowerCase().includes(q) ||
+        m.modelCode.toLowerCase().includes(q) ||
+        (m.hsnCode && m.hsnCode.toLowerCase().includes(q)) ||
+        (m.vehicleType && m.vehicleType.toLowerCase().includes(q)) ||
+        m.colors.some((c) => c.colorName.toLowerCase().includes(q));
+
+      return matchesCategory && matchesSearch;
+    });
+  }, [models, modelSearch, categoryFilter]);
+
+  // Pagination calculations
+  const totalModelItems = filteredModels.length;
+  const totalModelPages = Math.max(1, Math.ceil(totalModelItems / modelPageSize));
+  const safeModelCurrentPage = Math.min(Math.max(1, modelCurrentPage), totalModelPages);
+  const modelStartIndex = (safeModelCurrentPage - 1) * modelPageSize;
+  const modelEndIndex = Math.min(modelStartIndex + modelPageSize, totalModelItems);
+  const paginatedModels = useMemo(() => {
+    return filteredModels.slice(modelStartIndex, modelEndIndex);
+  }, [filteredModels, modelStartIndex, modelEndIndex]);
+
+  const handleResetModelFilters = () => {
+    setModelSearch("");
+    setCategoryFilter("ALL");
+    setModelCurrentPage(1);
+  };
 
   useEffect(() => {
     setVehicles(InventoryService.getVehicles());
@@ -1259,177 +1328,173 @@ export const ModelMastersDashboardView: React.FC<ModelMastersDashboardViewProps>
         </div>
       )}
 
+      {/* Sleek Compact Model Masters Filtration Bar */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3">
+        <div className="flex items-center gap-3">
+          {/* Search Box */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search by Model Name, Model Code (e.g. DG51, B3P1), or HSN..."
+              value={modelSearch}
+              onChange={(e) => setModelSearch(e.target.value)}
+              className="w-full pl-9 pr-9 py-2 bg-slate-50/70 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            />
+            {modelSearch && (
+              <button
+                type="button"
+                onClick={() => setModelSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200/60 transition-colors"
+                title="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Quick Filter Chips & Reset Button */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">
+              Category:
+            </span>
+            <button
+              type="button"
+              onClick={() => setCategoryFilter("ALL")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                categoryFilter === "ALL"
+                  ? "bg-blue-600 text-white shadow-2xs"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              All Models ({models.length})
+            </button>
+            {categoriesList.map((cat) => {
+              const active = categoryFilter === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setCategoryFilter(active ? "ALL" : cat)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                    active
+                      ? "bg-blue-600 text-white font-bold shadow-2xs"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {cat}{" "}
+                  <span
+                    className={`ml-1 px-1.5 py-0.2 rounded-full text-[10px] ${
+                      active ? "bg-white/20 text-white" : "bg-white text-slate-500 font-bold"
+                    }`}
+                  >
+                    {categoryCounts[cat] || 0}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {(modelSearch || categoryFilter !== "ALL") && (
+            <button
+              type="button"
+              onClick={handleResetModelFilters}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 transition-colors"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Reset Filters</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Model Catalog Grid / List View */}
       {viewMode === "grid" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {models.map((m) => (
-            <div
-              key={m.modelId}
-              className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md hover:border-blue-400/80 transition-all flex flex-col justify-between"
-            >
-              <div className="space-y-4">
-                {/* Header */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="font-bold text-slate-900 text-sm tracking-tight truncate">{m.modelName}</h3>
-                    <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-500 mt-1">
-                      <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md border border-blue-200/60 font-bold">
-                        {m.modelCode}
-                      </span>
-                      <span>•</span>
-                      <span>HSN: {m.hsnCode}</span>
-                    </div>
-                  </div>
-
-                  <span className="text-[10px] font-bold px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg shrink-0">
-                    {m.vehicleType}
-                  </span>
-                </div>
-
-                {/* Rates */}
-                <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50/80 p-3.5 rounded-xl border border-slate-100">
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Purchase Rate</span>
-                    <div className="font-mono font-bold text-slate-900 text-sm mt-0.5">
-                      ₹{m.purchaseRate?.toLocaleString("en-IN")}
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Standard Sales</span>
-                    <div className="font-mono font-bold text-emerald-600 text-sm mt-0.5">
-                      ₹{m.salesRate?.toLocaleString("en-IN")}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Colors with Dropdown */}
-                <div className="pt-1 border-t border-slate-100 flex items-center justify-between">
-                  <details className="relative inline-block text-left group flex-1">
-                    <summary className="list-none cursor-pointer inline-flex items-center justify-between w-full px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 transition-colors shadow-2xs select-none">
-                      <div className="flex items-center gap-2">
-                        <div className="flex -space-x-1 items-center">
-                          {m.colors.slice(0, 3).map((c) => (
-                            <span
-                              key={c.colorId}
-                              className="w-3 h-3 rounded-full border border-white ring-1 ring-slate-200"
-                              style={{ backgroundColor: c.colorCode }}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-[11px] font-medium text-slate-600">{m.colors.length} Available Colors</span>
-                      </div>
-                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-open:rotate-180 transition-transform duration-200" />
-                    </summary>
-
-                    <div className="absolute left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl p-2 z-20 space-y-1 animate-fadeIn text-left">
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1 border-b border-slate-100">
-                        Available Color Variants
-                      </div>
-                      <div className="max-h-40 overflow-y-auto space-y-1 pt-1">
-                        {m.colors.map((c) => (
-                          <div
-                            key={c.colorId}
-                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-50 text-xs font-medium text-slate-700"
-                          >
-                            <span
-                              className="w-3 h-3 rounded-full border border-black/10 shrink-0"
-                              style={{ backgroundColor: c.colorCode }}
-                            />
-                            <span className="truncate">{c.colorName}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </details>
-
-                  {/* View Details Eye Icon Button */}
-                  <button
-                    onClick={() => {
-                      setSelectedModelForDetails(m);
-                      setActiveDetailTab("units");
-                    }}
-                    className="ml-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 rounded-xl text-xs font-bold transition-all shadow-2xs shrink-0"
-                    title="View Vehicle Details"
-                  >
-                    <Eye className="w-4 h-4" />
-                    <span>View</span>
-                  </button>
-                </div>
-              </div>
+        <div className="space-y-4">
+          {paginatedModels.length === 0 ? (
+            <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 shadow-xs">
+              <Bike className="w-10 h-10 mx-auto mb-2 text-slate-300 stroke-[1.5]" />
+              <p className="text-sm font-semibold text-slate-600">No vehicle models match your filters</p>
+              <p className="text-xs text-slate-400 mt-1">
+                Try adjusting your search query or category filters.
+              </p>
+              <button
+                type="button"
+                onClick={handleResetModelFilters}
+                className="mt-3 px-3 py-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 rounded-lg inline-flex items-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Clear Filters
+              </button>
             </div>
-          ))}
-        </div>
-      ) : (
-        /* List View */
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-center text-xs">
-              <thead className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <tr>
-                  <th className="py-3 px-4 text-center">Model Name</th>
-                  <th className="py-3 px-3 text-center">Model Code</th>
-                  <th className="py-3 px-3 text-center">Category</th>
-                  <th className="py-3 px-3 text-center">HSN Code</th>
-                  <th className="py-3 px-3 text-center">Purchase Rate</th>
-                  <th className="py-3 px-3 text-center">Standard Sales</th>
-                  <th className="py-3 px-3 text-center">Colors</th>
-                  <th className="py-3 px-4 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {models.map((m) => (
-                  <tr
-                    key={m.modelId}
-                    onClick={() => {
-                      setSelectedModelForDetails(m);
-                      setActiveDetailTab("units");
-                    }}
-                    className="hover:bg-blue-50/40 cursor-pointer transition-colors group"
-                  >
-                    <td className="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap text-center group-hover:text-blue-600 transition-colors">
-                      {m.modelName}
-                    </td>
-                    <td className="py-3.5 px-3 whitespace-nowrap text-center">
-                      <span className="inline-block bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-200/60 font-mono font-bold text-blue-700 text-xs">
-                        {m.modelCode}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-3 whitespace-nowrap text-center">
-                      <span className="inline-block text-[10px] font-bold px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-md">
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {paginatedModels.map((m) => (
+                <div
+                  key={m.modelId}
+                  className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md hover:border-blue-400/80 transition-all flex flex-col justify-between"
+                >
+                  <div className="space-y-4">
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-slate-900 text-sm tracking-tight truncate">{m.modelName}</h3>
+                        <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-500 mt-1">
+                          <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md border border-blue-200/60 font-bold">
+                            {m.modelCode}
+                          </span>
+                          <span>•</span>
+                          <span>HSN: {m.hsnCode}</span>
+                        </div>
+                      </div>
+
+                      <span className="text-[10px] font-bold px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg shrink-0">
                         {m.vehicleType}
                       </span>
-                    </td>
-                    <td className="py-3.5 px-3 font-mono text-slate-500 whitespace-nowrap text-center">
-                      {m.hsnCode}
-                    </td>
-                    <td className="py-3.5 px-3 font-mono font-bold text-slate-800 whitespace-nowrap text-center">
-                      ₹{m.purchaseRate?.toLocaleString("en-IN")}
-                    </td>
-                    <td className="py-3.5 px-3 font-mono font-bold text-emerald-600 whitespace-nowrap text-center">
-                      ₹{m.salesRate?.toLocaleString("en-IN")}
-                    </td>
-                    <td className="py-3.5 px-3 whitespace-nowrap text-center" onClick={(e) => e.stopPropagation()}>
-                      {/* Compact Dropdown Menu for Colors */}
-                      <details className="relative inline-block text-left group">
-                        <summary className="list-none cursor-pointer inline-flex items-center gap-2 px-2.5 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 transition-colors shadow-2xs select-none">
-                          <div className="flex -space-x-1 items-center">
-                            {m.colors.slice(0, 3).map((c) => (
-                              <span
-                                key={c.colorId}
-                                className="w-3 h-3 rounded-full border border-white ring-1 ring-slate-200"
-                                style={{ backgroundColor: c.colorCode }}
-                              />
-                            ))}
+                    </div>
+
+                    {/* Rates */}
+                    <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50/80 p-3.5 rounded-xl border border-slate-100">
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Purchase Rate</span>
+                        <div className="font-mono font-bold text-slate-900 text-sm mt-0.5">
+                          ₹{m.purchaseRate?.toLocaleString("en-IN")}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Standard Sales</span>
+                        <div className="font-mono font-bold text-emerald-600 text-sm mt-0.5">
+                          ₹{m.salesRate?.toLocaleString("en-IN")}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Colors with Dropdown */}
+                    <div className="pt-1 border-t border-slate-100 flex items-center justify-between">
+                      <details className="relative inline-block text-left group flex-1">
+                        <summary className="list-none cursor-pointer inline-flex items-center justify-between w-full px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 transition-colors shadow-2xs select-none">
+                          <div className="flex items-center gap-2">
+                            <div className="flex -space-x-1 items-center">
+                              {m.colors.slice(0, 3).map((c) => (
+                                <span
+                                  key={c.colorId}
+                                  className="w-3 h-3 rounded-full border border-white ring-1 ring-slate-200"
+                                  style={{ backgroundColor: c.colorCode }}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-[11px] font-medium text-slate-600">{m.colors.length} Available Colors</span>
                           </div>
-                          <span>{m.colors.length} Colors</span>
                           <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-open:rotate-180 transition-transform duration-200" />
                         </summary>
 
-                        <div className="absolute left-1/2 -translate-x-1/2 mt-1.5 w-52 bg-white border border-slate-200 rounded-xl shadow-xl p-2 z-20 space-y-1 animate-fadeIn text-left">
+                        <div className="absolute left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl p-2 z-20 space-y-1 animate-fadeIn text-left">
                           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1 border-b border-slate-100">
                             Available Color Variants
                           </div>
-                          <div className="max-h-48 overflow-y-auto space-y-1 pt-1">
+                          <div className="max-h-40 overflow-y-auto space-y-1 pt-1">
                             {m.colors.map((c) => (
                               <div
                                 key={c.colorId}
@@ -1445,28 +1510,330 @@ export const ModelMastersDashboardView: React.FC<ModelMastersDashboardViewProps>
                           </div>
                         </div>
                       </details>
-                    </td>
-                    <td className="py-3.5 px-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+
+                      {/* View Details Eye Icon Button */}
                       <button
                         onClick={() => {
                           setSelectedModelForDetails(m);
                           setActiveDetailTab("units");
                         }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 rounded-lg text-xs font-bold transition-all shadow-2xs"
+                        className="ml-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 rounded-xl text-xs font-bold transition-all shadow-2xs shrink-0"
                         title="View Vehicle Details"
                       >
-                        <Eye className="w-3.5 h-3.5" />
+                        <Eye className="w-4 h-4" />
                         <span>View</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Grid View Pagination Footer Card */}
+          <div className="bg-white p-3.5 sm:px-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            {/* Left: Summary & Rows Selector */}
+            <div className="flex items-center gap-4 text-slate-500">
+              <span>
+                {totalModelItems > 0 ? (
+                  <>
+                    Showing <span className="font-bold text-slate-800">{modelStartIndex + 1}</span>-
+                    <span className="font-bold text-slate-800">{modelEndIndex}</span> of{" "}
+                    <span className="font-bold text-slate-800">{totalModelItems}</span> vehicle models
+                  </>
+                ) : (
+                  "No vehicle models found"
+                )}
+              </span>
+
+              <div className="flex items-center gap-1.5 border-l border-slate-200 pl-4">
+                <span className="text-[11px] text-slate-400 font-semibold">Per page:</span>
+                <select
+                  value={modelPageSize}
+                  onChange={(e) => {
+                    setModelPageSize(Number(e.target.value));
+                    setModelCurrentPage(1);
+                  }}
+                  className="bg-white border border-slate-300 text-slate-800 font-bold rounded-lg px-2 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer shadow-2xs"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Right: Prev / Page Numbers / Next */}
+            {totalModelPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setModelCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safeModelCurrentPage <= 1}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-300 bg-white text-slate-700 font-semibold hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-2xs text-xs"
+                  title="Previous Page"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Prev</span>
+                </button>
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalModelPages }, (_, i) => i + 1).map((pageNum) => (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => setModelCurrentPage(pageNum)}
+                      className={`w-6.5 h-6.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                        safeModelCurrentPage === pageNum
+                          ? "bg-blue-600 text-white shadow-xs"
+                          : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setModelCurrentPage((p) => Math.min(totalModelPages, p + 1))}
+                  disabled={safeModelCurrentPage >= totalModelPages}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-300 bg-white text-slate-700 font-semibold hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-2xs text-xs"
+                  title="Next Page"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* List View */
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="w-full overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <table className="w-full text-center text-xs">
+              <thead className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <tr>
+                  <th className="py-2.5 px-2 text-center whitespace-nowrap w-10 font-bold text-slate-500 uppercase">
+                    S.No
+                  </th>
+                  <th className="py-2.5 px-2.5 text-center font-bold text-slate-500 uppercase">
+                    Model Name
+                  </th>
+                  <th className="py-2.5 px-2 text-center whitespace-nowrap font-bold text-slate-500 uppercase">
+                    Model Code
+                  </th>
+                  <th className="py-2.5 px-2 text-center whitespace-nowrap font-bold text-slate-500 uppercase">
+                    Category
+                  </th>
+                  <th className="py-2.5 px-2 text-center whitespace-nowrap font-bold text-slate-500 uppercase">
+                    HSN Code
+                  </th>
+                  <th className="py-2.5 px-2 text-center whitespace-nowrap font-bold text-slate-500 uppercase">
+                    Purchase Rate
+                  </th>
+                  <th className="py-2.5 px-2 text-center whitespace-nowrap font-bold text-slate-500 uppercase">
+                    Standard Sales
+                  </th>
+                  <th className="py-2.5 px-2 text-center whitespace-nowrap font-bold text-slate-500 uppercase">
+                    Colors
+                  </th>
+                  <th className="py-2.5 px-2 text-center whitespace-nowrap w-20 font-bold text-slate-500 uppercase">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {paginatedModels.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="py-12 text-center text-slate-400">
+                      <Bike className="w-10 h-10 mx-auto mb-2 text-slate-300 stroke-[1.5]" />
+                      <p className="text-sm font-semibold text-slate-600">No vehicle models match your filters</p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Try adjusting your search query or category filters.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleResetModelFilters}
+                        className="mt-3 px-3 py-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 rounded-lg inline-flex items-center gap-1.5"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        Clear Filters
                       </button>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  paginatedModels.map((m, idx) => (
+                    <tr
+                      key={m.modelId}
+                      onClick={() => {
+                        setSelectedModelForDetails(m);
+                        setActiveDetailTab("units");
+                      }}
+                      className="hover:bg-blue-50/40 cursor-pointer transition-colors group"
+                    >
+                      <td className="py-3 px-2 whitespace-nowrap text-center font-mono font-bold text-slate-500 text-xs">
+                        {modelStartIndex + idx + 1}
+                      </td>
+                      <td className="py-3 px-2.5 font-bold text-slate-900 text-center group-hover:text-blue-600 transition-colors leading-snug">
+                        {m.modelName}
+                      </td>
+                      <td className="py-3 px-2 whitespace-nowrap text-center">
+                        <span className="inline-block bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60 font-mono font-bold text-blue-700 text-xs">
+                          {m.modelCode}
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 whitespace-nowrap text-center">
+                        <span className="inline-block text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md">
+                          {m.vehicleType}
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 font-mono text-slate-500 whitespace-nowrap text-center">
+                        {m.hsnCode}
+                      </td>
+                      <td className="py-3 px-2 font-mono font-bold text-slate-800 whitespace-nowrap text-center">
+                        ₹{m.purchaseRate?.toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-3 px-2 font-mono font-bold text-emerald-600 whitespace-nowrap text-center">
+                        ₹{m.salesRate?.toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-3 px-2 whitespace-nowrap text-center" onClick={(e) => e.stopPropagation()}>
+                        {/* Compact Dropdown Menu for Colors */}
+                        <details className="relative inline-block text-left group">
+                          <summary className="list-none cursor-pointer inline-flex items-center gap-1.5 px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 transition-colors shadow-2xs select-none">
+                            <div className="flex -space-x-1 items-center">
+                              {m.colors.slice(0, 3).map((c) => (
+                                <span
+                                  key={c.colorId}
+                                  className="w-2.5 h-2.5 rounded-full border border-white ring-1 ring-slate-200"
+                                  style={{ backgroundColor: c.colorCode }}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-[11px] font-medium">{m.colors.length} Colors</span>
+                            <ChevronDown className="w-3 h-3 text-slate-400 group-open:rotate-180 transition-transform duration-200" />
+                          </summary>
+
+                          <div className="absolute left-1/2 -translate-x-1/2 mt-1.5 w-52 bg-white border border-slate-200 rounded-xl shadow-xl p-2 z-20 space-y-1 animate-fadeIn text-left">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1 border-b border-slate-100">
+                              Available Color Variants
+                            </div>
+                            <div className="max-h-48 overflow-y-auto space-y-1 pt-1">
+                              {m.colors.map((c) => (
+                                <div
+                                  key={c.colorId}
+                                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-50 text-xs font-medium text-slate-700"
+                                >
+                                  <span
+                                    className="w-3 h-3 rounded-full border border-black/10 shrink-0"
+                                    style={{ backgroundColor: c.colorCode }}
+                                  />
+                                  <span className="truncate">{c.colorName}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </details>
+                      </td>
+                      <td className="py-3 px-2 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => {
+                            setSelectedModelForDetails(m);
+                            setActiveDetailTab("units");
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 rounded-lg text-xs font-bold transition-all shadow-2xs"
+                          title="View Vehicle Details"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>View</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
-          <div className="p-4 border-t border-slate-200 bg-slate-50/60 text-xs text-slate-500 font-medium px-5 flex items-center justify-between">
-            <span>Showing {models.length} Yamaha vehicle models in Master Catalog</span>
-            <span className="text-[11px] text-slate-400">Click any row or &apos;View&apos; to view all vehicle details</span>
+
+          {/* List View Pagination Footer */}
+          <div className="p-3.5 sm:px-6 border-t border-slate-200 bg-slate-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            {/* Left: Summary & Rows Selector */}
+            <div className="flex items-center gap-4 text-slate-500">
+              <span>
+                {totalModelItems > 0 ? (
+                  <>
+                    Showing <span className="font-bold text-slate-800">{modelStartIndex + 1}</span>-
+                    <span className="font-bold text-slate-800">{modelEndIndex}</span> of{" "}
+                    <span className="font-bold text-slate-800">{totalModelItems}</span> vehicle models
+                  </>
+                ) : (
+                  "No vehicle models found"
+                )}
+              </span>
+
+              <div className="flex items-center gap-1.5 border-l border-slate-200 pl-4">
+                <span className="text-[11px] text-slate-400 font-semibold">Rows:</span>
+                <select
+                  value={modelPageSize}
+                  onChange={(e) => {
+                    setModelPageSize(Number(e.target.value));
+                    setModelCurrentPage(1);
+                  }}
+                  className="bg-white border border-slate-300 text-slate-800 font-bold rounded-lg px-2 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer shadow-2xs"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Right: Prev / Page Numbers / Next */}
+            {totalModelPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setModelCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safeModelCurrentPage <= 1}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-300 bg-white text-slate-700 font-semibold hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-2xs text-xs"
+                  title="Previous Page"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Prev</span>
+                </button>
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalModelPages }, (_, i) => i + 1).map((pageNum) => (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => setModelCurrentPage(pageNum)}
+                      className={`w-6.5 h-6.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                        safeModelCurrentPage === pageNum
+                          ? "bg-blue-600 text-white shadow-xs"
+                          : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setModelCurrentPage((p) => Math.min(totalModelPages, p + 1))}
+                  disabled={safeModelCurrentPage >= totalModelPages}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-300 bg-white text-slate-700 font-semibold hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-2xs text-xs"
+                  title="Next Page"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

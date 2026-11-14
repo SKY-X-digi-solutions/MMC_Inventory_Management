@@ -4,7 +4,7 @@ import React, { useState, useMemo } from "react";
 import { StockMovement } from "@/types/inventory";
 import { InventoryService } from "@/services/inventory.service";
 import { ExportService } from "@/services/export.service";
-import { X, History, Download, Search, ShieldCheck } from "lucide-react";
+import { X, History, Download, Search, ShieldCheck, ArrowRight } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface MovementAuditModalProps {
@@ -92,61 +92,72 @@ export const MovementAuditModal: React.FC<MovementAuditModalProps> = ({
         {/* Ledger Table */}
         <div className="p-6 overflow-y-auto flex-1">
           <div className="border border-slate-200 rounded-2xl overflow-hidden">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-center text-xs">
               <thead className="bg-slate-100 text-[10px] font-bold text-slate-600 uppercase tracking-wider sticky top-0">
                 <tr>
-                  <th className="py-2.5 px-3">Movement Type</th>
-                  <th className="py-2.5 px-3">Chassis No (VIN)</th>
-                  <th className="py-2.5 px-3">Movement Path</th>
-                  <th className="py-2.5 px-3">Reference Doc</th>
-                  <th className="py-2.5 px-3">Operator</th>
-                  <th className="py-2.5 px-3">Timestamp</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap align-middle w-12 font-bold text-slate-600 uppercase">S.No</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap align-middle">Movement Type</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap align-middle">Chassis No (VIN)</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap align-middle">Movement Path</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap align-middle">Reference Doc</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap align-middle">Operator</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap align-middle">Timestamp</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-slate-400 font-sans">
+                    <td colSpan={7} className="py-8 text-center text-slate-400 font-sans">
                       No matching movement records found.
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((m) => {
+                  filtered.map((m, idx) => {
                     const isPurchase = m.movementType === "PURCHASE";
                     const isSale = m.movementType === "SALE";
                     const isTransfer = m.movementType.includes("TRANSFER");
 
                     return (
                       <tr key={m.movementId} className="hover:bg-slate-50">
-                        <td className="py-2.5 px-3">
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap font-mono font-bold text-slate-500 text-xs align-middle">
+                          {idx + 1}
+                        </td>
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap align-middle">
                           <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            className={`inline-flex items-center justify-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold ${
                               isPurchase
                                 ? "bg-emerald-100 text-emerald-800"
                                 : isSale
-                                ? "bg-slate-200 text-slate-800"
-                                : isTransfer
                                 ? "bg-blue-100 text-blue-800"
+                                : isTransfer
+                                ? "bg-indigo-100 text-indigo-800"
                                 : "bg-purple-100 text-purple-800"
                             }`}
                           >
                             {m.movementType}
                           </span>
                         </td>
-                        <td className="py-2.5 px-3 font-bold text-slate-900">
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap font-bold text-slate-900 align-middle">
                           {m.chassisNumber}
                         </td>
-                        <td className="py-2.5 px-3 font-sans text-xs">
-                          {m.fromBranchName ? `${m.fromBranchName} → ` : ""}
-                          <span className="font-semibold text-slate-800">{m.toBranchName || "Customer Delivery"}</span>
+                        <td className="py-2.5 px-3 text-center align-middle font-sans text-xs whitespace-nowrap">
+                          <div className="inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                            <span className="font-semibold text-slate-700">
+                              {m.fromBranchName || "Factory Inward"}
+                            </span>
+                            <ArrowRight className="w-3 h-3 text-blue-500 shrink-0" />
+                            <span className="font-bold text-slate-800">
+                              {m.toBranchName || "Customer Delivery"}
+                            </span>
+                          </div>
                         </td>
-                        <td className="py-2.5 px-3 text-blue-700">
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap align-middle text-blue-700 font-bold">
                           {m.referenceId}
                         </td>
-                        <td className="py-2.5 px-3 font-sans text-slate-600">
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap align-middle font-sans text-slate-600">
                           {m.createdBy}
                         </td>
-                        <td className="py-2.5 px-3 text-slate-400">
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap align-middle text-slate-400">
                           {m.movementDate ? m.movementDate.replace("T", " ").slice(0, 19) : "—"}
                         </td>
                       </tr>

@@ -427,6 +427,83 @@ export class InventoryService {
         notes: "Customer retail sale invoice generated",
         createdAt: dStr,
       },
+      {
+        movementId: "MOV-004",
+        vehicleId: "VEH-1004",
+        chassisNumber: "ME1RG431000104",
+        movementType: "PURCHASE",
+        referenceType: "PURCHASE_VOUCHER",
+        referenceId: "PUR-101",
+        toBranchId: "BR001",
+        toBranchName: "Tirupattur Main Showroom (HQ)",
+        quantity: 1,
+        movementDate: dStr,
+        createdBy: "Inventory Manager",
+        notes: "Inward consignment receipt Yard A1",
+        createdAt: dStr,
+      },
+      {
+        movementId: "MOV-005",
+        vehicleId: "VEH-1005",
+        chassisNumber: "ME1RG431000105",
+        movementType: "PURCHASE",
+        referenceType: "PURCHASE_VOUCHER",
+        referenceId: "PUR-101",
+        toBranchId: "BR001",
+        toBranchName: "Tirupattur Main Showroom (HQ)",
+        quantity: 1,
+        movementDate: dStr,
+        createdBy: "Inventory Manager",
+        notes: "Pre-booking allocation inspection completed",
+        createdAt: dStr,
+      },
+      {
+        movementId: "MOV-006",
+        vehicleId: "VEH-1006",
+        chassisNumber: "ME1RG431000106",
+        movementType: "PURCHASE",
+        referenceType: "PURCHASE_VOUCHER",
+        referenceId: "PUR-101",
+        toBranchId: "BR001",
+        toBranchName: "Tirupattur Main Showroom (HQ)",
+        quantity: 1,
+        movementDate: dStr,
+        createdBy: "Inventory Manager",
+        notes: "FZ-S series load delivery received in Yard A2",
+        createdAt: dStr,
+      },
+      {
+        movementId: "MOV-007",
+        vehicleId: "VEH-1008",
+        chassisNumber: "ME1RG431000108",
+        movementType: "TRANSFER_IN",
+        referenceType: "TRANSFER",
+        referenceId: "TRF-902",
+        fromBranchId: "BR002",
+        fromBranchName: "Vaniyambadi Branch",
+        toBranchId: "BR001",
+        toBranchName: "Tirupattur Main Showroom (HQ)",
+        quantity: 1,
+        movementDate: dStr,
+        createdBy: "Transfer Manager",
+        notes: "Inter-branch stock rebalance received into showroom floor",
+        createdAt: dStr,
+      },
+      {
+        movementId: "MOV-008",
+        vehicleId: "VEH-1010",
+        chassisNumber: "ME1RG431000110",
+        movementType: "ADJUSTMENT",
+        referenceType: "MANUAL",
+        referenceId: "ADJ-301",
+        toBranchId: "BR001",
+        toBranchName: "Tirupattur Main Showroom (HQ)",
+        quantity: 1,
+        movementDate: dStr,
+        createdBy: "Service Engineer",
+        notes: "PDI safety inspection & battery fitment adjustment",
+        createdAt: dStr,
+      },
     ];
   }
 
@@ -566,7 +643,15 @@ export class InventoryService {
   }
 
   public static getMovements(vehicleId?: string): StockMovement[] {
-    const movements = this.load(STORAGE_KEYS.MOVEMENTS, () => this.getInitialMovements());
+    const rawMovements = this.load(STORAGE_KEYS.MOVEMENTS, () => this.getInitialMovements());
+    const initial = this.getInitialMovements();
+    const existingIds = new Set(rawMovements.map((m) => m.movementId));
+    const movements = [...rawMovements];
+    initial.forEach((initM) => {
+      if (!existingIds.has(initM.movementId)) {
+        movements.push(initM);
+      }
+    });
     if (vehicleId) {
       return movements.filter((m) => m.vehicleId === vehicleId);
     }
