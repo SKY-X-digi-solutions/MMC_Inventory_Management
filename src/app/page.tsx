@@ -21,6 +21,7 @@ import { InwardDashboardView } from "@/components/inventory/InwardDashboardView"
 import { PurchaseVouchersDashboardView } from "@/components/inventory/PurchaseVouchersDashboardView";
 import { TransfersView } from "@/components/inventory/TransfersView";
 import { SalesInvoicingDashboardView } from "@/components/inventory/SalesInvoicingDashboardView";
+import { PricingMasterDashboardView } from "@/components/inventory/PricingMasterDashboardView";
 import { ModelMastersDashboardView } from "@/components/inventory/ModelMastersDashboardView";
 import { MovementAuditDashboardView } from "@/components/inventory/MovementAuditDashboardView";
 import { VehicleDetailDrawer } from "@/components/inventory/VehicleDetailDrawer";
@@ -188,6 +189,8 @@ export default function InventoryDashboardPage() {
               ? "Stock Transfers"
               : activeTab === "sales-invoicing"
               ? "Sales & Gate Pass"
+              : activeTab === "pricing-master"
+              ? "Pricing & On-Road Masters"
               : activeTab === "model-masters"
               ? "Model Masters"
               : "Movement Audit Log"
@@ -248,6 +251,12 @@ export default function InventoryDashboardPage() {
                 onRefresh={refreshData}
                 preSelectedVehicle={preSelectedVehicleForAction}
                 onClearPreSelected={() => setPreSelectedVehicleForAction(null)}
+              />
+            )}
+
+            {activeTab === "pricing-master" && (
+              <PricingMasterDashboardView
+                onOpenSale={() => setActiveTab("sales-invoicing")}
               />
             )}
 

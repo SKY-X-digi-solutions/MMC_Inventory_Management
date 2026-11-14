@@ -8,6 +8,7 @@ import {
   SalesInvoiceRecord,
   StockImportSession,
   VehicleModel,
+  VehiclePricingMaster,
 } from "@/types/inventory";
 import {
   DEFAULT_BRANCHES,
@@ -26,6 +27,7 @@ const STORAGE_KEYS = {
   INVOICES: "mmc_inventory_invoices_v1",
   MOVEMENTS: "mmc_inventory_movements_v1",
   MODELS: "mmc_inventory_models_v1",
+  PRICING: "mmc_inventory_pricing_v1",
 };
 
 export class InventoryService {
@@ -670,6 +672,163 @@ export class InventoryService {
     return this.load(STORAGE_KEYS.MODELS, () => DEFAULT_VEHICLE_MODELS);
   }
 
+  public static getInitialPricingMasters(): VehiclePricingMaster[] {
+    return [
+      {
+        pricingId: "PRC-001",
+        modelId: "MOD001",
+        modelName: "Fascino 125 Fi Hybrid DLX",
+        modelCode: "DG51/BGP4",
+        vehicleType: "SCOOTER",
+        oemPurchaseCost: 65590,
+        exShowroomBase: 70000,
+        gstRate: 0.28,
+        gstAmount: 19600,
+        exShowroomPrice: 89600,
+        rtoRoadTax: 9500,
+        rtoSmartCardPlate: 950,
+        insurance1Plus5: 5400,
+        mandatoryAccessories: 4890,
+        extendedWarranty5Yr: 1850,
+        totalOnRoadPrice: 112190,
+        dealerGrossMargin: 4410,
+        subDealerWholesaleRate: 87100,
+        subDealerMargin: 2500,
+        updatedAt: "2026-11-01T10:00:00.000Z",
+      },
+      {
+        pricingId: "PRC-002",
+        modelId: "MOD002",
+        modelName: "RayZR 125 Fi Hybrid Disc",
+        modelCode: "BGPE/DG54",
+        vehicleType: "SCOOTER",
+        oemPurchaseCost: 64200,
+        exShowroomBase: 68500,
+        gstRate: 0.28,
+        gstAmount: 19180,
+        exShowroomPrice: 87680,
+        rtoRoadTax: 9200,
+        rtoSmartCardPlate: 950,
+        insurance1Plus5: 5300,
+        mandatoryAccessories: 4890,
+        extendedWarranty5Yr: 1850,
+        totalOnRoadPrice: 109870,
+        dealerGrossMargin: 4300,
+        subDealerWholesaleRate: 85180,
+        subDealerMargin: 2500,
+        updatedAt: "2026-11-01T10:00:00.000Z",
+      },
+      {
+        pricingId: "PRC-003",
+        modelId: "MOD003",
+        modelName: "FZ-S Fi Version 4.0 DLX",
+        modelCode: "B3P1",
+        vehicleType: "FZ SERIES",
+        oemPurchaseCost: 95400,
+        exShowroomBase: 101500,
+        gstRate: 0.28,
+        gstAmount: 28420,
+        exShowroomPrice: 129920,
+        rtoRoadTax: 14200,
+        rtoSmartCardPlate: 950,
+        insurance1Plus5: 7800,
+        mandatoryAccessories: 5200,
+        extendedWarranty5Yr: 2100,
+        totalOnRoadPrice: 160170,
+        dealerGrossMargin: 6100,
+        subDealerWholesaleRate: 126920,
+        subDealerMargin: 3000,
+        updatedAt: "2026-11-01T10:00:00.000Z",
+      },
+      {
+        pricingId: "PRC-004",
+        modelId: "MOD004",
+        modelName: "MT-15 V2 Deluxe",
+        modelCode: "B901",
+        vehicleType: "SPORTS - 155 CC",
+        oemPurchaseCost: 121000,
+        exShowroomBase: 131000,
+        gstRate: 0.28,
+        gstAmount: 36680,
+        exShowroomPrice: 167680,
+        rtoRoadTax: 18500,
+        rtoSmartCardPlate: 950,
+        insurance1Plus5: 9200,
+        mandatoryAccessories: 5500,
+        extendedWarranty5Yr: 2400,
+        totalOnRoadPrice: 204230,
+        dealerGrossMargin: 10000,
+        subDealerWholesaleRate: 163680,
+        subDealerMargin: 4000,
+        updatedAt: "2026-11-01T10:00:00.000Z",
+      },
+      {
+        pricingId: "PRC-005",
+        modelId: "MOD005",
+        modelName: "R15 V4 Racing Edition",
+        modelCode: "B741",
+        vehicleType: "RACING - 150CC",
+        oemPurchaseCost: 135000,
+        exShowroomBase: 144000,
+        gstRate: 0.28,
+        gstAmount: 40320,
+        exShowroomPrice: 184320,
+        rtoRoadTax: 20400,
+        rtoSmartCardPlate: 950,
+        insurance1Plus5: 9800,
+        mandatoryAccessories: 5800,
+        extendedWarranty5Yr: 2400,
+        totalOnRoadPrice: 223670,
+        dealerGrossMargin: 9000,
+        subDealerWholesaleRate: 179820,
+        subDealerMargin: 4500,
+        updatedAt: "2026-11-01T10:00:00.000Z",
+      },
+      {
+        pricingId: "PRC-006",
+        modelId: "MOD006",
+        modelName: "Aerox 155 Version S",
+        modelCode: "B651",
+        vehicleType: "SPORTS - SCOOTER",
+        oemPurchaseCost: 110500,
+        exShowroomBase: 116000,
+        gstRate: 0.28,
+        gstAmount: 32480,
+        exShowroomPrice: 148480,
+        rtoRoadTax: 16300,
+        rtoSmartCardPlate: 950,
+        insurance1Plus5: 8400,
+        mandatoryAccessories: 5200,
+        extendedWarranty5Yr: 2100,
+        totalOnRoadPrice: 181430,
+        dealerGrossMargin: 5500,
+        subDealerWholesaleRate: 144980,
+        subDealerMargin: 3500,
+        updatedAt: "2026-11-01T10:00:00.000Z",
+      },
+    ];
+  }
+
+  public static getPricingMasters(): VehiclePricingMaster[] {
+    return this.load<VehiclePricingMaster[]>(STORAGE_KEYS.PRICING, () => this.getInitialPricingMasters());
+  }
+
+  public static getPricingByModelId(modelId: string): VehiclePricingMaster | undefined {
+    const list = this.getPricingMasters();
+    return list.find((p) => p.modelId === modelId);
+  }
+
+  public static savePricingMaster(pricing: VehiclePricingMaster): void {
+    const list = this.getPricingMasters();
+    const idx = list.findIndex((p) => p.pricingId === pricing.pricingId || p.modelId === pricing.modelId);
+    if (idx >= 0) {
+      list[idx] = { ...pricing, updatedAt: new Date().toISOString() };
+    } else {
+      list.push({ ...pricing, updatedAt: new Date().toISOString() });
+    }
+    this.save(STORAGE_KEYS.PRICING, list);
+  }
+
   public static getPurchaseVouchers(branchId?: string): PurchaseVoucher[] {
     const vouchers = this.load<PurchaseVoucher[]>(STORAGE_KEYS.PURCHASES, () => [
       {
@@ -909,11 +1068,21 @@ export class InventoryService {
     const currentMovements = this.getMovements();
     const existingChassis = this.getExistingChassisSet();
 
+    const isOfficialDemo = session.supplierInvoiceNo === "E126008210";
+    let baseVehicles = currentVehicles;
+    if (isOfficialDemo) {
+      baseVehicles = currentVehicles.filter((v) => v.supplierInvoiceNo !== "E126008210");
+      existingChassis.clear();
+      baseVehicles.forEach((v) => {
+        if (v.chassisNumber) existingChassis.add(v.chassisNumber.toUpperCase().trim());
+      });
+    }
+
     const newVehicles: VehicleRecord[] = [];
     const newMovements: StockMovement[] = [];
     const now = new Date().toISOString();
 
-    const voucherId = `PV-${Date.now().toString().slice(-6)}`;
+    const voucherId = isOfficialDemo ? "PV-E126008210" : `PV-${Date.now().toString().slice(-6)}`;
     let addedCount = 0;
     let deductedCount = 0;
 
@@ -932,7 +1101,10 @@ export class InventoryService {
       ) || DEFAULT_VEHICLE_MODELS[0];
 
       const matchedColor = matchedModel.colors.find(
-        (c) => c.colorName.toLowerCase() === row.color.toLowerCase()
+        (c) =>
+          c.colorName.toLowerCase() === row.color.toLowerCase() ||
+          row.color.toLowerCase().includes(c.colorName.toLowerCase()) ||
+          c.colorName.toLowerCase().includes(row.color.toLowerCase())
       ) || matchedModel.colors[0];
 
       const vehicleId = `VEH-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -989,7 +1161,7 @@ export class InventoryService {
       });
     });
 
-    const updatedVehicles = [...newVehicles, ...currentVehicles];
+    const updatedVehicles = [...newVehicles, ...baseVehicles];
     const updatedMovements = [...newMovements, ...currentMovements];
 
     this.save(STORAGE_KEYS.VEHICLES, updatedVehicles);
@@ -1050,7 +1222,7 @@ export class InventoryService {
       supplierId: "SUP001",
       supplierName: "India Yamaha Motor Pvt. Ltd.",
       supplierInvoiceNo: session.supplierInvoiceNo || `YMH-INV-${Date.now().toString().slice(-4)}`,
-      purchaseDate: now.split("T")[0],
+      purchaseDate: isOfficialDemo ? "2026-09-10" : now.split("T")[0],
       branchId: branch.branchId,
       branchName: branch.branchName,
       locationId: location.locationId,
@@ -1070,7 +1242,7 @@ export class InventoryService {
       items,
     };
 
-    const currentVouchers = this.getPurchaseVouchers();
+    const currentVouchers = this.getPurchaseVouchers().filter((v) => !isOfficialDemo || v.supplierInvoiceNo !== "E126008210");
     this.save(STORAGE_KEYS.PURCHASES, [newVoucher, ...currentVouchers]);
 
     return { addedCount, deductedCount, voucher: newVoucher };

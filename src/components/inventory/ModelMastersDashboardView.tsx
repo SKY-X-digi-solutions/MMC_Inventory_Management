@@ -1146,16 +1146,13 @@ export const ModelMastersDashboardView: React.FC<ModelMastersDashboardViewProps>
     <div className="space-y-6 animate-fadeIn">
       {/* Top Banner */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div className="space-y-1">
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">Vehicle Model Masters Dashboard</h1>
             <span className="text-[11px] px-2.5 py-0.5 bg-blue-50 text-blue-700 font-semibold rounded-full border border-blue-200/60">
               Stage 2 Catalog Configuration
             </span>
           </div>
-          <p className="text-xs text-slate-500 max-w-2xl leading-relaxed">
-            Official Yamaha dealership model codes, pricing rates, statutory GST classes, color variant chips, and service intervals.
-          </p>
         </div>
 
         <div className="flex items-center gap-3 shrink-0 self-stretch sm:self-auto justify-end">

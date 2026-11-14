@@ -38,7 +38,7 @@ export const InwardDashboardView: React.FC<InwardDashboardViewProps> = ({
   );
   const [locationId, setLocationId] = useState(DEFAULT_LOCATIONS[0].locationId); // Yard A
   const [binId, setBinId] = useState(DEFAULT_STORAGE_BINS[0].binId); // YARD-A1
-  const [invoiceNo, setInvoiceNo] = useState(`YMH-INV-${Date.now().toString().slice(-5)}`);
+  const [invoiceNo, setInvoiceNo] = useState("E126008210");
   const [session, setSession] = useState<StockImportSession | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeVoucher, setActiveVoucher] = useState<PurchaseVoucher | null>(null);
@@ -121,16 +121,37 @@ export const InwardDashboardView: React.FC<InwardDashboardViewProps> = ({
   const handleLoadSample = () => {
     try {
       const sampleContent = ImportParserService.getSampleYamahaDispatchCSV();
-      const existingChassis = InventoryService.getExistingChassisSet();
+      const actualInvoiceNo = "E126008210";
+      setInvoiceNo(actualInvoiceNo);
+
+      // Parse actual 40-unit factory dispatch from India Yamaha Motor Pvt. Ltd.
       const parsed = ImportParserService.parseDispatchSheet(
         sampleContent,
-        "YAMAHA_FACTORY_DISPATCH_OCT2026.csv",
-        invoiceNo,
+        "YAMAHA_FACTORY_DISPATCH_E126008210.csv",
+        actualInvoiceNo,
         branchId,
-        existingChassis
+        new Set<string>() // Allow demo loading cleanly
       );
       setSession(parsed);
-      toast.success("Loaded sample Yamaha dispatch sheet with pre-configured duplicates for testing!");
+
+      // Automatically commit the import and create official Purchase Voucher
+      const { addedCount, voucher } = InventoryService.commitBulkImport(
+        parsed,
+        locationId,
+        binId,
+        branchId
+      );
+
+      if (voucher) {
+        setActiveVoucher(voucher);
+        setShowVoucherDocument(true);
+      }
+
+      onRefresh();
+      toast.success(
+        `Loaded official Yamaha Dispatch Advice (Invoice E126008210)! Purchase voucher created and ${addedCount} vehicles added to stock.`,
+        { duration: 6000 }
+      );
     } catch (err: any) {
       toast.error(err.message || "Failed to load sample");
     }
@@ -183,13 +204,10 @@ export const InwardDashboardView: React.FC<InwardDashboardViewProps> = ({
         <>
           {/* Top Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white px-5 py-3.5 rounded-xl border border-slate-200 shadow-xs">
-            <div>
+            <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
                 Bulk Inward Invoices & Staging Dashboard
               </h1>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Verify chassis and inward Yamaha factory dispatches directly to yard inventory
-              </p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -412,19 +430,39 @@ export const InwardDashboardView: React.FC<InwardDashboardViewProps> = ({
             </div>
 
             {/* Action Bar */}
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
               <span className="text-xs text-slate-600">
-                Ready to commit: <span className="font-bold text-slate-900">{session.validRows} vehicles</span> into {branchId}.
+                {activeVoucher ? (
+                  <span className="text-emerald-700 font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Official Purchase Voucher {activeVoucher.voucherNumber} generated! ({session.validRows} vehicles active in live stock)</span>
+                  </span>
+                ) : (
+                  <span>
+                    Ready to commit: <span className="font-bold text-slate-900">{session.validRows} vehicles</span> into {branchId}.
+                  </span>
+                )}
               </span>
 
-              <button
-                onClick={handleCommit}
-                disabled={isProcessing || session.validRows === 0}
-                className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white text-xs font-bold rounded-xl shadow-xs shadow-blue-600/30 transition-all cursor-pointer"
-              >
-                <span>Confirm & Inward {session.validRows} Vehicles to Stock</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              {activeVoucher ? (
+                <button
+                  type="button"
+                  onClick={() => setShowVoucherDocument(true)}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs shadow-blue-600/30 transition-all cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>View Official Purchase Voucher</span>
+                </button>
+              ) : (
+                <button
+                  onClick={handleCommit}
+                  disabled={isProcessing || session.validRows === 0}
+                  className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white text-xs font-bold rounded-xl shadow-xs shadow-blue-600/30 transition-all cursor-pointer"
+                >
+                  <span>Confirm & Inward {session.validRows} Vehicles to Stock</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         )}

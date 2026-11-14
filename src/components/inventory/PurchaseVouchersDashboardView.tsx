@@ -175,13 +175,8 @@ export const PurchaseVouchersDashboardView: React.FC<PurchaseVouchersDashboardVi
         <>
           {/* Header Banner */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white px-5 py-4 rounded-xl border border-slate-200 shadow-xs">
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-black text-slate-900 tracking-tight">Purchase Vouchers Dashboard</h1>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Official vehicle inward registry & commercial procurement vouchers
-              </p>
+            <div className="min-w-0">
+              <h1 className="text-xl font-black text-slate-900 tracking-tight">Purchase Vouchers Dashboard</h1>
             </div>
 
             <button
@@ -451,66 +446,77 @@ export const PurchaseVouchersDashboardView: React.FC<PurchaseVouchersDashboardVi
                 <FileSpreadsheet className="w-4 h-4 text-blue-600" />
                 <span>Registered Purchase Vouchers ({vouchers.length})</span>
               </h3>
-              <span className="text-xs text-slate-400">Official Inward Vouchers</span>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              <table className="w-full text-left text-xs min-w-[1050px] border-collapse">
+                <thead className="bg-slate-50 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                   <tr>
-                    <th className="py-3 px-4">Voucher No</th>
-                    <th className="py-3 px-4">Supplier & Invoice</th>
-                    <th className="py-3 px-4">Branch / Yard</th>
-                    <th className="py-3 px-4">Total Units</th>
-                    <th className="py-3 px-4">Grand Total</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-center">Date</th>
-                    <th className="py-3 px-4 text-center">Action</th>
+                    <th className="py-3 px-3.5 text-center min-w-[55px] whitespace-nowrap">S.No</th>
+                    <th className="py-3 px-4 min-w-[140px] whitespace-nowrap">Voucher No</th>
+                    <th className="py-3 px-4 min-w-[180px] whitespace-nowrap">Supplier & Invoice</th>
+                    <th className="py-3 px-4 min-w-[170px] whitespace-nowrap">Branch / Yard</th>
+                    <th className="py-3 px-4 text-center min-w-[100px] whitespace-nowrap">Total Units</th>
+                    <th className="py-3 px-4 text-right min-w-[130px] whitespace-nowrap">Grand Total</th>
+                    <th className="py-3 px-4 text-center min-w-[95px] whitespace-nowrap">Status</th>
+                    <th className="py-3 px-4 text-center min-w-[105px] whitespace-nowrap">Date</th>
+                    <th className="py-3 px-4 text-center min-w-[110px] whitespace-nowrap">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {vouchers.map((v) => (
-                    <tr key={v.purchaseId} className="hover:bg-slate-50 transition-colors">
-                      <td className="py-3.5 px-4 font-mono font-bold text-blue-700">
-                        {v.voucherNumber}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="font-bold text-slate-900">{v.supplierName}</div>
-                        <div className="text-[10px] font-mono text-slate-400">{v.supplierInvoiceNo}</div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="font-semibold text-slate-800">{v.branchName || "Main Showroom"}</div>
-                        <div className="text-[10px] font-mono text-blue-600">{v.binCode || "YARD-A1"}</div>
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-slate-900">
-                        {v.totalQuantity} Units
-                      </td>
-                      <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
-                        ₹{v.grandTotal?.toLocaleString("en-IN")}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                          {v.status}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-center text-slate-500 font-medium">
-                        {v.createdAt ? v.createdAt.split("T")[0] : "—"}
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <div className="flex items-center justify-center">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedVoucher(v)}
-                            className="inline-flex items-center justify-center gap-1.5 h-8 px-3 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white text-xs font-bold rounded-xl border border-blue-200 hover:border-blue-600 transition-all shadow-2xs cursor-pointer whitespace-nowrap group"
-                            title="View Official Voucher in Dashboard"
-                          >
-                            <Eye className="w-3.5 h-3.5 text-blue-600 group-hover:text-white transition-colors" />
-                            <span>View Voucher</span>
-                          </button>
-                        </div>
+                  {vouchers.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-8 text-center text-slate-400 text-xs font-medium">
+                        No purchase vouchers found.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    vouchers.map((v, idx) => (
+                      <tr key={v.purchaseId} className="hover:bg-slate-50 transition-colors">
+                        <td className="py-3.5 px-3.5 text-center font-bold text-slate-400 whitespace-nowrap font-mono">
+                          {idx + 1}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono font-bold text-blue-700 whitespace-nowrap">
+                          {v.voucherNumber}
+                        </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <div className="font-bold text-slate-900">{v.supplierName}</div>
+                          <div className="text-[10px] font-mono text-slate-400">{v.supplierInvoiceNo}</div>
+                        </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <div className="font-semibold text-slate-800">{v.branchName || "Main Showroom"}</div>
+                          <div className="text-[10px] font-mono text-blue-600">{v.binCode || "YARD-A1"}</div>
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-bold text-slate-900 whitespace-nowrap">
+                          {v.totalQuantity} Units
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                          ₹{v.grandTotal?.toLocaleString("en-IN")}
+                        </td>
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            {v.status}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-center text-slate-600 font-mono whitespace-nowrap font-medium">
+                          {v.createdAt ? v.createdAt.split("T")[0] : "—"}
+                        </td>
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedVoucher(v)}
+                              className="inline-flex items-center justify-center gap-1.5 h-8 px-3.5 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white text-xs font-bold rounded-xl border border-blue-200 hover:border-blue-600 transition-all shadow-2xs cursor-pointer whitespace-nowrap group"
+                              title="View Official Voucher in Dashboard"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-blue-600 group-hover:text-white transition-colors" />
+                              <span>View Voucher</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

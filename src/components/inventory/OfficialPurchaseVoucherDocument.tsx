@@ -374,6 +374,33 @@ export const OfficialPurchaseVoucherDocument: React.FC<OfficialPurchaseVoucherDo
           </div>
         </div>
 
+        {/* Logistics & Factory Dispatch Information (From Official India Yamaha Motor Dispatch Advice) */}
+        <div className="p-3.5 bg-blue-50/70 rounded-2xl border border-blue-200 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-900/60 block">Transporter & Truck</span>
+            <span className="font-bold text-slate-900 block mt-0.5">NISSIN ABC LOGISTICS</span>
+            <span className="text-[10.5px] font-mono font-bold text-blue-800">Vehicle: NL01AH-2295</span>
+          </div>
+
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-900/60 block">Factory Dispatch Route</span>
+            <span className="font-bold text-slate-900 block mt-0.5">Surajpur Factory (UP)</span>
+            <span className="text-[10.5px] text-slate-600">To: Tirupattur (M/S Maruthi Motors 17690)</span>
+          </div>
+
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-900/60 block">Dispatch Advice (DA)</span>
+            <span className="font-mono font-bold text-slate-900 block mt-0.5">DA: 008210 (REF: 09073696)</span>
+            <span className="text-[10.5px] text-slate-600">Date: 10-Sep-2026 • Mode: Truck</span>
+          </div>
+
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-900/60 block">Marine / Transit Insurance</span>
+            <span className="font-bold text-slate-900 block mt-0.5 truncate" title="Cholamandalam MS General Insurance Co. Ltd.">Cholamandalam MS</span>
+            <span className="text-[10px] font-mono text-slate-600 truncate block">Pol: 2457/00101315/000/01</span>
+          </div>
+        </div>
+
         {/* SECTION 1: Commercial & Model Breakdown */}
         <div className="space-y-2.5">
           <div className="flex items-center justify-between">

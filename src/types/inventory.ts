@@ -228,10 +228,17 @@ export interface SalesInvoiceRecord {
   customerAddress: string;
   customerCity: string;
   customerGstin?: string;
+  customerAadhaar?: string;
+  nomineeName?: string;
+  saleType?: "RETAIL" | "SUB_DEALER";
+  subDealerName?: string;
   subtotal: number;
   discount: number;
   taxAmount: number;
   productCharges: number;
+  rtoCharges?: number;
+  insuranceCharges?: number;
+  extendedWarrantyCharges?: number;
   billValue: number;
   paidAmount: number;
   balanceAmount: number;
@@ -239,6 +246,9 @@ export interface SalesInvoiceRecord {
   financierName?: string;
   loanReference?: string;
   isHypothecated: boolean;
+  gatePassNumber?: string;
+  firstServiceDueDate?: string;
+  odometerReading?: number;
   status: "POSTED" | "CANCELLED";
   createdAt: string;
   postedAt: string;
@@ -310,4 +320,32 @@ export interface StockImportSession {
   rows: StockImportRow[];
   uploadedAt: string;
 }
+
+export interface VehiclePricingMaster {
+  pricingId: string;
+  modelId: string;
+  modelName: string;
+  modelCode: string;
+  vehicleType: string;
+  // Commercial Cost & Base
+  oemPurchaseCost: number;        // Rate paid to Yamaha
+  exShowroomBase: number;         // Taxable Base (Ex-Showroom without GST)
+  gstRate: number;                // 0.28 (28% GST)
+  gstAmount: number;              // exShowroomBase * 0.28
+  exShowroomPrice: number;        // exShowroomBase + gstAmount
+  // Statutory & Pass-Through Charges
+  rtoRoadTax: number;             // Tamil Nadu Life Time Tax (LTT)
+  rtoSmartCardPlate: number;      // Smart Card RC + HSRP postal fee
+  insurance1Plus5: number;        // 1 Yr OD + 5 Yr Mandatory TP Comprehensive Package
+  // Dealership Mandatory & Value Added Packages
+  mandatoryAccessories: number;   // ISI Helmet, Crash Guard, Mirrors, Teflon
+  extendedWarranty5Yr: number;    // Yamaha Shield 5-Year Extended Warranty + RSA
+  // Totals & Allocation Margins
+  totalOnRoadPrice: number;       // Official Customer Sticker Price
+  dealerGrossMargin: number;      // (exShowroomBase - oemPurchaseCost)
+  subDealerWholesaleRate: number; // Wholesale rate for sub-dealer allocation
+  subDealerMargin: number;        // Margin allocated to sub-dealer (e.g. ₹2,500)
+  updatedAt: string;
+}
+
 

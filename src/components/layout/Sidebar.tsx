@@ -14,6 +14,7 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
+  IndianRupee,
 } from "lucide-react";
 
 export type ActiveTab =
@@ -22,6 +23,7 @@ export type ActiveTab =
   | "purchase-voucher"
   | "transfers"
   | "sales-invoicing"
+  | "pricing-master"
   | "model-masters"
   | "movement-audit";
 
@@ -71,6 +73,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: "Sales & Gate Pass",
       icon: ReceiptText,
       badge: null,
+    },
+    {
+      id: "pricing-master" as ActiveTab,
+      label: "Pricing & On-Road Masters",
+      icon: IndianRupee,
+      badge: "GST 28%",
+      badgeColor: "bg-emerald-100 text-emerald-800",
     },
     {
       id: "model-masters" as ActiveTab,
@@ -145,14 +154,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   onClick={() => onTabChange(item.id)}
-                  className={`h-9.5 w-9.5 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
+                  className={`h-9.5 w-9.5 rounded-xl flex items-center justify-center transition-all cursor-pointer border-2 ${
                     isActive
-                      ? "bg-blue-50/90 border-blue-500 shadow-xs ring-1 ring-blue-500/20 text-blue-600"
-                      : "bg-slate-50/90 hover:bg-slate-100 border-slate-200/80 hover:border-slate-300 text-blue-600"
+                      ? "bg-blue-600 border-blue-700 text-white shadow-md ring-2 ring-blue-500/30"
+                      : "bg-white hover:bg-blue-50/60 text-blue-900 hover:text-blue-950 border-blue-900 hover:border-blue-950 shadow-xs"
                   }`}
                   aria-label={item.label}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? "text-blue-700" : "text-blue-600"}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-blue-900 group-hover:text-blue-950"}`} />
                 </button>
 
                 {/* Floating tooltip on hover when collapsed */}
@@ -225,14 +234,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onClick={onToggleCollapse}
             className={`flex items-center justify-center rounded-xl transition-all cursor-pointer shadow-2xs group ${
               isCollapsed
-                ? "h-9 w-9 text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200/60"
+                ? "h-9.5 w-9.5 text-blue-900 bg-white hover:bg-blue-50/60 border-2 border-blue-900 hover:border-blue-950"
                 : "h-8.5 w-8.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 border border-slate-200/80"
             }`}
             title={isCollapsed ? "Expand sidebar menu" : "Collapse sidebar menu"}
             aria-label={isCollapsed ? "Expand sidebar menu" : "Collapse sidebar menu"}
           >
             {isCollapsed ? (
-              <PanelLeftOpen className="w-4 h-4 text-blue-600" />
+              <PanelLeftOpen className="w-4 h-4 text-blue-900 group-hover:text-blue-950" />
             ) : (
               <PanelLeftClose className="w-4 h-4 text-slate-500 group-hover:text-blue-600 transition-colors" />
             )}
