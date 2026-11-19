@@ -348,4 +348,68 @@ export interface VehiclePricingMaster {
   updatedAt: string;
 }
 
+export type LedgerTransactionType =
+  | "OPENING_BALANCE"
+  | "VEHICLE_DISPATCH"
+  | "VEHICLE_RETURN"
+  | "BANK_RECEIPT"
+  | "FINANCE_PAYOUT"
+  | "SPARES_BILL"
+  | "ADJUSTMENT";
+
+export interface SubDealerLedgerEntry {
+  entryId: string;
+  subDealerId: string;
+  subDealerCode: string;
+  subDealerName: string;
+  date: string; // YYYY-MM-DD
+  particular: string; // e.g. "R15 OBD II - ME1RG67L1R0020973"
+  transactionType: LedgerTransactionType;
+  chassisNumber?: string;
+  modelCode?: string;
+  billNo?: string; // SSI-312, TR-0045, etc.
+  debit: number; // Inward receipt / reversal (reduces due balance)
+  credit: number; // Charges to dealer (increases due balance)
+  runningBalance: number;
+  financierName?: string;
+  bankName?: string;
+  customerName?: string;
+  referenceNo?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface YbcDealerSummary {
+  sNo: number;
+  subDealerId: string;
+  dealerCode: string; // e.g. KND, AMBUR, SVM-NTP, etc.
+  dealerName: string;
+  city: string;
+  rtoZone?: string;
+  contactPerson?: string;
+  mobile?: string;
+  balance: number; // e.g. 1030257 (Advance) or -51252 (Due)
+  stockSales: {
+    openStock: number;
+    pur: number;
+    tra: number;
+    ret: number;
+    sale: number;
+    stock: number;
+  };
+  registration: {
+    open: number;
+    sale: number;
+    regDone: number;
+    closing: number;
+  };
+  today: {
+    pur: number;
+    sal: number;
+    tra: number;
+    ret: number;
+    regDone: number;
+  };
+}
+
 

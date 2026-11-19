@@ -8,6 +8,7 @@ import {
   FileSpreadsheet,
   ArrowRightLeft,
   ReceiptText,
+  Landmark,
   Bike,
   History,
   ChevronLeft,
@@ -23,6 +24,7 @@ export type ActiveTab =
   | "purchase-voucher"
   | "transfers"
   | "sales-invoicing"
+  | "ybc-ledger"
   | "pricing-master"
   | "model-masters"
   | "movement-audit";
@@ -73,6 +75,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: "Sales & Gate Pass",
       icon: ReceiptText,
       badge: null,
+    },
+    {
+      id: "ybc-ledger" as ActiveTab,
+      label: "YBC & Sub-Dealer Accounts",
+      icon: Landmark,
+      badge: "Ledger",
+      badgeColor: "bg-emerald-100 text-emerald-800",
     },
     {
       id: "pricing-master" as ActiveTab,

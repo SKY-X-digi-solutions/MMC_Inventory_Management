@@ -21,6 +21,7 @@ import { InwardDashboardView } from "@/components/inventory/InwardDashboardView"
 import { PurchaseVouchersDashboardView } from "@/components/inventory/PurchaseVouchersDashboardView";
 import { TransfersView } from "@/components/inventory/TransfersView";
 import { SalesInvoicingDashboardView } from "@/components/inventory/SalesInvoicingDashboardView";
+import { YbcAccountsLedgerDashboardView } from "@/components/inventory/YbcAccountsLedgerDashboardView";
 import { PricingMasterDashboardView } from "@/components/inventory/PricingMasterDashboardView";
 import { ModelMastersDashboardView } from "@/components/inventory/ModelMastersDashboardView";
 import { MovementAuditDashboardView } from "@/components/inventory/MovementAuditDashboardView";
@@ -199,6 +200,8 @@ export default function InventoryDashboardPage() {
               ? "Stock Transfers"
               : activeTab === "sales-invoicing"
               ? "Sales & Gate Pass"
+              : activeTab === "ybc-ledger"
+              ? "YBC & Sub-Dealer Accounts Ledger"
               : activeTab === "pricing-master"
               ? "Pricing & On-Road Masters"
               : activeTab === "model-masters"
@@ -263,6 +266,10 @@ export default function InventoryDashboardPage() {
                 preSelectedVehicle={preSelectedVehicleForAction}
                 onClearPreSelected={() => setPreSelectedVehicleForAction(null)}
               />
+            )}
+
+            {activeTab === "ybc-ledger" && (
+              <YbcAccountsLedgerDashboardView onRefresh={refreshData} />
             )}
 
             {activeTab === "pricing-master" && (

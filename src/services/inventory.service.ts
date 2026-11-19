@@ -17,6 +17,7 @@ import {
   DEFAULT_SUB_DEALERS,
   DEFAULT_VEHICLE_MODELS,
 } from "./modelCatalog.service";
+import { YbcLedgerService } from "./ybcLedger.service";
 import { db } from "@/lib/firebase/config";
 import { doc, setDoc, writeBatch, collection, getDocs } from "firebase/firestore";
 
@@ -1335,6 +1336,11 @@ export class InventoryService {
     this.save(STORAGE_KEYS.VEHICLES, vehicles);
     this.save(STORAGE_KEYS.MOVEMENTS, movements);
     this.save(STORAGE_KEYS.TRANSFERS, transfers);
+
+    // Auto-record debit/credit entry in Sub-Dealer ledger if dispatched to a sub-dealer
+    if (transfer.destinationType === "SUB_DEALER" && transfer.subDealerId) {
+      YbcLedgerService.recordTransferToLedger(transfer);
+    }
   }
 
   /**
